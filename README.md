@@ -309,14 +309,39 @@ vLLM (port 8002)
 
 ## VRAM Requirements
 
-| Component | VRAM | Notes |
-|-----------|------|-------|
-| ACE-Step 1.5 (DiT + VAE + 5Hz LM) | ~27 GB | Base inference |
-| vLLM (Qwen3-8B) | ~17-20 GB | Tag generation |
-| LoRA Training | ~5-15 GB additional | Depends on batch size and rank |
-| **Total** | **~50-60 GB** | All services running |
+| Component | VRAM | Required? | Notes |
+|-----------|------|-----------|-------|
+| ACE-Step 1.5 (DiT + VAE + 5Hz LM) | ~27 GB | Yes (for AI audio) | Core music generation |
+| Tag LLM (default: Qwen3-8B via vLLM) | ~17-20 GB | No | Fallback hardcoded tags work without it |
+| LoRA Training | ~5-15 GB additional | No | Only during active training |
+| **Full stack** | **~50-60 GB** | | All services + training |
 
-A GPU with 48+ GB VRAM can run inference. Training requires 60+ GB to run alongside inference services.
+### Configuration Tiers
+
+| Setup | VRAM Needed | What Works |
+|-------|-------------|------------|
+| **Sequencer only** (no AI) | 0 GB | Step sequencer, sound engine, 3D visuals — no GPU needed |
+| **ACE-Step only** | ~27 GB | AI audio generation + sequencer (no dynamic tags) |
+| **ACE-Step + small LLM** | ~30-35 GB | Full features with a lighter tag model (see below) |
+| **ACE-Step + 8B LLM** | ~45-50 GB | Full features with best tag quality |
+| **Everything + LoRA training** | ~55-65 GB | All features including fine-tuning |
+
+### Using a Smaller Tag LLM
+
+The default 8B model gives the best tag quality but isn't required. You can swap it for a smaller model by editing `start_llm.sh`:
+
+```bash
+# 3B model (~6-8 GB VRAM) — good quality, much lighter
+MODEL="Qwen/Qwen2.5-3B-Instruct"
+
+# 1.5B model (~3-4 GB VRAM) — basic quality, minimal VRAM
+MODEL="Qwen/Qwen2.5-1.5B-Instruct"
+
+# 0.5B model (~1-2 GB VRAM) — lowest quality, near-zero overhead
+MODEL="Qwen/Qwen2.5-0.5B-Instruct"
+```
+
+Or skip the tag LLM entirely — the app falls back to hardcoded genre tags when no LLM is available.
 
 ## License
 
