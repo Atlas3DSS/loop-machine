@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PSY LOOP MACHINE</title>
+<title>LOOP MACHINE</title>
 <script src="https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.js"></script>
 <script type="importmap">
 {
@@ -172,6 +172,17 @@ input[type=range]::-moz-range-thumb {
 /* tag chips */
 .tag-chip { font-size:8px !important; padding:1px 5px !important; letter-spacing:0 !important; }
 .tag-chip.selected { background:rgba(180,0,255,0.45); border-color:#c060ff; color:#fff; }
+.tag-chip.subgenre { border-color:rgba(0,255,255,0.3); }
+.tag-chip.subgenre:hover { border-color:rgba(0,255,255,0.6); box-shadow:0 0 8px rgba(0,255,255,0.3); }
+
+/* tag cascade */
+#tag-cascade { min-height:30px; }
+.tag-breadcrumb-item { font-size:8px; color:#8070a0; cursor:pointer; transition:color .12s; }
+.tag-breadcrumb-item:hover { color:#c060ff; }
+.tag-breadcrumb-item.current { color:#c060ff; cursor:default; }
+.tag-breadcrumb-sep { font-size:7px; color:#504070; }
+.tag-spinner { display:inline-block; width:8px; height:8px; border:2px solid rgba(180,0,255,0.3); border-top-color:#c060ff; border-radius:50%; animation:tag-spin .6s linear infinite; vertical-align:middle; }
+@keyframes tag-spin { to { transform:rotate(360deg); } }
 
 /* preview playing */
 .btn.previewing { background:rgba(255,60,60,0.4); border-color:#ff4444; color:#ff8888; }
@@ -198,13 +209,72 @@ input[type=range]::-moz-range-thumb {
 .lib-item .lib-meta { font-size:8px; color:#605080; min-width:50px; text-align:right; }
 .lib-item .btn { font-size:8px; padding:2px 6px; }
 .lib-slots { display:flex; gap:2px; }
+
+/* arranger */
+.arr-track { display:flex; gap:2px; align-items:center; overflow-x:auto; padding:3px 0; scrollbar-width:thin; scrollbar-color:rgba(180,0,255,0.3) transparent; }
+.arr-block {
+  min-width:36px; height:28px; border-radius:3px;
+  border:1px solid rgba(180,0,255,0.3); background:rgba(40,0,60,0.5);
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:bold; color:#c0b0ff; cursor:pointer;
+  transition:all .12s; flex-shrink:0; position:relative;
+}
+.arr-block:hover { border-color:#c060ff; background:rgba(80,0,120,0.5); }
+.arr-block.active { border-color:#00ffff; box-shadow:0 0 6px rgba(0,255,255,0.3); }
+.arr-block.bridge { background:rgba(0,60,60,0.5); border-color:rgba(0,180,180,0.3); color:#80e0e0; font-style:italic; }
+.arr-block .arr-x {
+  position:absolute; top:-4px; right:-4px; width:12px; height:12px;
+  border-radius:50%; background:#ff4444; color:#fff; font-size:7px;
+  display:none; align-items:center; justify-content:center; cursor:pointer;
+  line-height:12px; text-align:center;
+}
+.arr-block:hover .arr-x { display:flex; }
+
+/* ── LORA STUDIO ── */
+.lora-section { margin:4px 0; }
+.lora-header {
+  display:flex; align-items:center; gap:6px; cursor:pointer; padding:2px 0;
+}
+.lora-header .lora-arrow { font-size:8px; color:#8070a0; transition:transform .2s; display:inline-block; }
+.lora-header .lora-arrow.open { transform:rotate(90deg); }
+.lora-body { display:none; padding:4px 0; }
+.lora-body.open { display:block; }
+.lora-dot {
+  width:8px; height:8px; border-radius:50%; background:#444; display:inline-block; flex-shrink:0;
+  transition:background .2s, box-shadow .2s;
+}
+.lora-dot.loaded { background:#00cc66; box-shadow:0 0 6px rgba(0,204,102,0.5); }
+.lora-dot.active { background:#00ffff; box-shadow:0 0 8px rgba(0,255,255,0.5); }
+.lora-adapters {
+  max-height:100px; overflow-y:auto; margin:3px 0; scrollbar-width:thin;
+  scrollbar-color:rgba(180,0,255,0.3) transparent;
+}
+.lora-adapter-item {
+  display:flex; align-items:center; gap:6px; padding:3px 6px; border-radius:3px;
+  cursor:pointer; font-size:9px; color:#c0b0ff; transition:background .12s;
+}
+.lora-adapter-item:hover { background:rgba(80,0,120,0.4); }
+.lora-adapter-item .lora-ckpts { font-size:8px; color:#605080; margin-left:auto; }
+.lora-progress-wrap {
+  width:100%; height:6px; background:rgba(255,255,255,0.06); border-radius:3px; margin:4px 0;
+}
+.lora-progress-bar {
+  height:100%; border-radius:3px; width:0%; transition:width .3s;
+  background:linear-gradient(90deg,#ff00ff,#00ffff);
+}
+.lora-status-text { font-size:8px; color:#8070a0; margin:2px 0; word-break:break-all; }
+.lora-input {
+  flex:1; padding:3px 6px; border-radius:3px; border:1px solid rgba(180,0,255,0.3);
+  background:rgba(20,0,40,0.6); color:#d0b0ff; font-family:inherit; font-size:10px; outline:none;
+}
+.lora-input:focus { border-color:#c060ff; }
 </style>
 </head>
 <body>
 <div id="canvas-container"></div>
 
 <div id="panel">
-  <h1>PSY LOOP MACHINE</h1>
+  <h1>LOOP MACHINE</h1>
 
   <!-- transport -->
   <div class="row" style="justify-content:center; gap:8px; margin-bottom:6px;">
@@ -215,10 +285,10 @@ input[type=range]::-moz-range-thumb {
 
   <!-- main controls -->
   <div class="slider-grid">
-    <div class="si" title="Tempo in beats per minute. Psytrance is typically 138-148. Linear feel — each step is +1 BPM.">
+    <div class="si" title="Tempo in beats per minute. 60-90 = chill/ambient, 90-130 = house/hip-hop, 130-150 = trance/techno, 150-200 = DnB/hardcore.">
       <label>BPM</label>
-      <input type="range" id="bpm" min="130" max="160" value="144" step="1">
-      <span class="val" id="bpm-val">144</span>
+      <input type="range" id="bpm" min="60" max="200" value="128" step="1">
+      <span class="val" id="bpm-val">128</span>
     </div>
     <div class="si" title="Intensity — controls how many layers play at once. Low = kick + bass only. Mid = adds hats, claps, acid. High = everything including lead, pads, stabs. Small moves add/remove entire instruments.">
       <label>INT</label>
@@ -256,7 +326,7 @@ input[type=range]::-moz-range-thumb {
       <input type="range" id="acid-rate" min="0.25" max="8" value="2" step="0.25">
       <span class="val" id="al-val">2.0</span>
     </div>
-    <div class="si" title="Reverb wet/dry mix on lead and pad. 0 = completely dry. 1 = fully washed out in reverb. 0.2-0.5 is the sweet spot for spacey psytrance leads.">
+    <div class="si" title="Reverb wet/dry mix on lead and pad. 0 = completely dry. 1 = fully washed out in reverb. 0.2-0.5 is the sweet spot for spacey leads.">
       <label>VERB</label>
       <input type="range" id="reverb" min="0" max="1" value="0.35" step="0.01">
       <span class="val" id="rv-val">0.35</span>
@@ -305,6 +375,17 @@ input[type=range]::-moz-range-thumb {
     <span class="progress-label" id="loop-pos"></span>
   </div>
 
+  <!-- song arranger -->
+  <div style="display:flex; align-items:center; gap:6px; margin:4px 0 2px;">
+    <span class="section-title">ARRANGER</span>
+    <button class="btn" id="arr-mode" style="font-size:8px; padding:1px 6px;">LOOP</button>
+    <button class="btn" id="arr-add" style="font-size:8px; padding:1px 6px;">+ BAR</button>
+    <button class="btn" id="arr-copy" style="font-size:8px; padding:1px 6px;" title="Copy current bar to end of arrangement">COPY</button>
+    <button class="btn" id="arr-bridge" style="font-size:8px; padding:1px 6px;" title="Generate a bridge/transition bar">BRIDGE</button>
+    <button class="btn" id="arr-clear" style="font-size:8px; padding:1px 6px;">CLR</button>
+  </div>
+  <div id="arr-track" class="arr-track"></div>
+
   <div id="maps-list" style="max-height:80px; overflow-y:auto; margin:2px 0;"></div>
 
   <div class="divider"></div>
@@ -315,7 +396,7 @@ input[type=range]::-moz-range-thumb {
     <button class="btn" id="tex-gen">GENERATE</button>
   </div>
   <div class="presets">
-    <button class="btn" data-p="sacred geometry, golden ratio spirals">sacred</button>
+    <button class="btn" data-p="abstract geometric patterns, neon gradients">neon</button>
     <button class="btn" data-p="dark organic tendrils, bioluminescent">organic</button>
     <button class="btn" data-p="fractal mandelbrot zoom, electric">fractal</button>
     <button class="btn" data-p="cyberpunk circuitry, glitch art">cyber</button>
@@ -329,56 +410,17 @@ input[type=range]::-moz-range-thumb {
 
   <!-- ACE-Step audio generator -->
   <div class="divider"></div>
-  <div class="section-title"><span class="ace-dot off" id="ace-dot"></span>ACE-STEP SAMPLE GENERATOR</div>
+  <div class="section-title"><span class="ace-dot off" id="ace-dot"></span>ACE-STEP SAMPLE GENERATOR <span class="ace-dot off" id="llm-dot" title="LLM Tag Generator" style="margin-left:6px;"></span></div>
   <div class="tex-row">
     <input type="text" id="ace-prompt" placeholder="describe the sound to generate...">
     <button class="btn" id="ace-gen">GENERATE</button>
   </div>
 
-  <!-- tag chips: click to append to prompt -->
-  <div style="margin:3px 0;">
-    <div style="display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;">
-      <span style="font-size:7px;color:#605080;width:32px;line-height:20px;">GENRE</span>
-      <button class="btn tag-chip" data-tag="psytrance">psytrance</button>
-      <button class="btn tag-chip" data-tag="dark psy">dark psy</button>
-      <button class="btn tag-chip" data-tag="full-on">full-on</button>
-      <button class="btn tag-chip" data-tag="goa trance">goa</button>
-      <button class="btn tag-chip" data-tag="techno">techno</button>
-      <button class="btn tag-chip" data-tag="ambient">ambient</button>
-      <button class="btn tag-chip" data-tag="drum and bass">dnb</button>
-    </div>
-    <div style="display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;">
-      <span style="font-size:7px;color:#605080;width:32px;line-height:20px;">INST</span>
-      <button class="btn tag-chip" data-tag="303 acid bass">303</button>
-      <button class="btn tag-chip" data-tag="synth pad">pad</button>
-      <button class="btn tag-chip" data-tag="kick drum">kick</button>
-      <button class="btn tag-chip" data-tag="hi-hat percussion">hats</button>
-      <button class="btn tag-chip" data-tag="synth lead">lead</button>
-      <button class="btn tag-chip" data-tag="sub bass">sub</button>
-      <button class="btn tag-chip" data-tag="vocal chop">vox</button>
-      <button class="btn tag-chip" data-tag="fx riser">riser</button>
-    </div>
-    <div style="display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;">
-      <span style="font-size:7px;color:#605080;width:32px;line-height:20px;">MOOD</span>
-      <button class="btn tag-chip" data-tag="dark">dark</button>
-      <button class="btn tag-chip" data-tag="deep">deep</button>
-      <button class="btn tag-chip" data-tag="euphoric">euphoric</button>
-      <button class="btn tag-chip" data-tag="psychedelic">psyche</button>
-      <button class="btn tag-chip" data-tag="aggressive">aggro</button>
-      <button class="btn tag-chip" data-tag="atmospheric">atmo</button>
-      <button class="btn tag-chip" data-tag="hypnotic">hypno</button>
-    </div>
-    <div style="display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;">
-      <span style="font-size:7px;color:#605080;width:32px;line-height:20px;">CHAR</span>
-      <button class="btn tag-chip" data-tag="rolling">rolling</button>
-      <button class="btn tag-chip" data-tag="squelchy">squelchy</button>
-      <button class="btn tag-chip" data-tag="distorted">dist</button>
-      <button class="btn tag-chip" data-tag="reverb">reverb</button>
-      <button class="btn tag-chip" data-tag="delay">delay</button>
-      <button class="btn tag-chip" data-tag="looping">loop</button>
-      <button class="btn tag-chip" data-tag="evolving">evolve</button>
-      <button class="btn tag-chip" data-tag="tight punchy">tight</button>
-    </div>
+  <!-- dynamic tag cascade (LLM-powered) -->
+  <div id="tag-cascade" style="margin:3px 0;">
+    <div id="tag-breadcrumb" style="display:flex; align-items:center; gap:3px; margin:2px 0; flex-wrap:wrap;"></div>
+    <div id="tag-loading" style="display:none; font-size:8px; color:#8070a0; margin:3px 0;"><span class="tag-spinner"></span> Loading tags...</div>
+    <div id="tag-grid"></div>
   </div>
   <button class="btn" id="ace-clear-tags" style="font-size:8px; padding:1px 6px; margin-bottom:3px;">CLEAR PROMPT</button>
 
@@ -400,10 +442,20 @@ input[type=range]::-moz-range-thumb {
     <input type="range" id="ace-steps" min="4" max="32" value="8" step="4" style="flex:1;">
     <span class="val" id="ace-steps-val" style="width:30px;">8</span>
   </div>
-  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Guidance scale (CFG) — how strongly the audio follows the prompt. Low (3-7) = creative/loose. Mid (10-15) = balanced. High (15-25) = strict prompt adherence but can overfit. Default: 15.">
+  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Guidance scale (CFG) — only effective for SFT/Base models. Turbo (8 steps) ignores this. For SFT: 3-7 = creative, 7-15 = balanced, 15+ = strict.">
     <label style="font-size:9px;color:#8070a0;width:28px;">CFG</label>
-    <input type="range" id="ace-cfg" min="1" max="25" value="15" step="0.5" style="flex:1;">
-    <span class="val" id="ace-cfg-val" style="width:30px;">15</span>
+    <input type="range" id="ace-cfg" min="1" max="25" value="1" step="0.5" style="flex:1;">
+    <span class="val" id="ace-cfg-val" style="width:30px;">1</span>
+  </div>
+  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="LM Temperature — controls creativity of the language model planner. Lower = conservative/deterministic. Higher = creative/surprising. Default: 0.85.">
+    <label style="font-size:9px;color:#8070a0;width:28px;">TEMP</label>
+    <input type="range" id="ace-lm-temp" min="0.1" max="1.5" value="0.85" step="0.05" style="flex:1;">
+    <span class="val" id="ace-lm-temp-val" style="width:30px;">0.85</span>
+  </div>
+  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Seed — fixed seed for reproducible results. Set to -1 for random. Use a fixed seed to compare prompt changes without random variation.">
+    <label style="font-size:9px;color:#8070a0;width:28px;">SEED</label>
+    <input type="number" id="ace-seed" value="-1" min="-1" max="2147483647" style="flex:1; padding:2px 6px; border-radius:4px; border:1px solid rgba(180,0,255,0.3); background:rgba(20,0,40,0.6); color:#d0b0ff; font-family:inherit; font-size:10px; outline:none; width:60px;">
+    <button class="btn" id="ace-seed-rand" style="font-size:8px; padding:1px 6px;" title="Randomize seed">🎲</button>
   </div>
   <div style="display:flex; align-items:center; margin-top:4px;">
     <span class="section-title">SAMPLE BANK</span>
@@ -414,6 +466,83 @@ input[type=range]::-moz-range-thumb {
   <!-- sample mixer -->
   <div class="section-title" style="margin-top:4px;">SAMPLE MIXER</div>
   <div id="sample-mixer"></div>
+
+  <!-- lora studio -->
+  <div class="lora-section">
+    <div class="divider"></div>
+    <div class="lora-header" id="lora-toggle">
+      <span class="lora-arrow" id="lora-arrow">&#9654;</span>
+      <span class="lora-dot" id="lora-dot"></span>
+      <span class="section-title" style="margin:0;">LORA STUDIO</span>
+    </div>
+    <div class="lora-body" id="lora-body">
+      <!-- Status bar -->
+      <div style="display:flex; align-items:center; gap:8px; margin:4px 0;">
+        <span style="font-size:9px; color:#8070a0;" id="lora-status-label">No adapter loaded</span>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:4px;">
+          <label style="font-size:8px; color:#605080;">SCALE</label>
+          <input type="range" id="lora-scale" min="0" max="200" value="100" step="1" style="width:60px;" disabled>
+          <span class="val" id="lora-scale-val" style="width:28px; font-size:9px;">1.0</span>
+        </div>
+      </div>
+      <!-- Load / Unload / Toggle -->
+      <div style="display:flex; gap:4px; align-items:center; margin:3px 0;">
+        <input type="text" class="lora-input" id="lora-path" placeholder="Adapter path or click from list...">
+        <button class="btn" id="lora-load" style="font-size:8px; padding:2px 6px;">LOAD</button>
+        <button class="btn" id="lora-unload" style="font-size:8px; padding:2px 6px;" disabled>UNLOAD</button>
+        <button class="btn" id="lora-onoff" style="font-size:8px; padding:2px 6px;" disabled>ON</button>
+      </div>
+      <!-- Adapter browser -->
+      <div style="display:flex; align-items:center; gap:4px; margin:4px 0;">
+        <span style="font-size:8px; color:#605080;">ADAPTERS</span>
+        <button class="btn" id="lora-refresh" style="font-size:7px; padding:1px 5px;">REFRESH</button>
+      </div>
+      <div class="lora-adapters" id="lora-adapter-list"></div>
+      <!-- Training divider -->
+      <div class="divider"></div>
+      <span style="font-size:8px; color:#605080; letter-spacing:1px;">TRAINING</span>
+      <!-- Preprocess row -->
+      <div style="display:flex; gap:4px; align-items:center; margin:3px 0;">
+        <input type="text" class="lora-input" id="lora-audio-dir" placeholder="Audio directory to preprocess...">
+        <button class="btn" id="lora-preprocess" style="font-size:8px; padding:2px 6px;">PREPROCESS</button>
+      </div>
+      <!-- Tensor dir (auto-filled or manual) -->
+      <div style="display:flex; gap:4px; align-items:center; margin:3px 0;">
+        <input type="text" class="lora-input" id="lora-tensor-dir" placeholder="Tensor directory (auto-filled after preprocess)...">
+      </div>
+      <!-- Params grid -->
+      <div class="slider-grid" style="margin:4px 0;">
+        <div class="si">
+          <label>RANK</label>
+          <input type="range" id="lora-rank" min="1" max="64" value="8" step="1">
+          <span class="val" id="lora-rank-val">8</span>
+        </div>
+        <div class="si">
+          <label>ALPHA</label>
+          <input type="range" id="lora-alpha" min="1" max="128" value="16" step="1">
+          <span class="val" id="lora-alpha-val">16</span>
+        </div>
+        <div class="si">
+          <label>EPOCHS</label>
+          <input type="range" id="lora-epochs" min="1" max="500" value="100" step="1">
+          <span class="val" id="lora-epochs-val">100</span>
+        </div>
+        <div class="si">
+          <label>LR</label>
+          <input type="range" id="lora-lr" min="-6" max="-2" value="-4" step="0.1">
+          <span class="val" id="lora-lr-val">1e-4</span>
+        </div>
+      </div>
+      <!-- Train / Stop -->
+      <div style="display:flex; gap:4px; align-items:center; margin:3px 0;">
+        <button class="btn" id="lora-train" style="font-size:9px; padding:3px 10px;">START TRAINING</button>
+        <button class="btn" id="lora-stop" style="font-size:9px; padding:3px 10px;" disabled>STOP</button>
+      </div>
+      <!-- Progress -->
+      <div class="lora-progress-wrap"><div class="lora-progress-bar" id="lora-progress"></div></div>
+      <div class="lora-status-text" id="lora-train-status"></div>
+    </div>
+  </div>
 
   <!-- settings -->
   <div class="settings" id="settings-panel">
@@ -470,25 +599,49 @@ input[type=range]::-moz-range-thumb {
   </div>
 </div>
 
+<!-- prompt preview modal -->
+<div id="prompt-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-content" style="width:min(560px,90vw);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <span class="section-title">REVIEW PROMPT</span>
+      <button class="btn" id="prompt-modal-close" style="font-size:13px;">&times;</button>
+    </div>
+    <div style="font-size:8px; color:#605080; margin-bottom:4px;">Edit the prompt before sending to ACE-Step:</div>
+    <textarea id="prompt-modal-text" style="width:100%; height:80px; resize:vertical; padding:6px 8px; border-radius:4px; border:1px solid rgba(180,0,255,0.3); background:rgba(20,0,40,0.6); color:#d0b0ff; font-family:inherit; font-size:11px; outline:none;"></textarea>
+    <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+      <label style="font-size:8px; color:#605080;">LYRICS</label>
+      <span id="prompt-modal-vocal" style="font-size:8px; color:#8070a0;"></span>
+    </div>
+    <textarea id="prompt-modal-lyrics" style="width:100%; height:48px; resize:vertical; padding:4px 8px; border-radius:4px; border:1px solid rgba(180,0,255,0.3); background:rgba(20,0,40,0.6); color:#d0b0ff; font-family:inherit; font-size:10px; outline:none; margin:2px 0;"></textarea>
+    <div style="display:flex; gap:6px; align-items:center; margin-top:4px; font-size:8px; color:#605080;">
+      <span id="prompt-modal-info"></span>
+    </div>
+    <div style="display:flex; gap:6px; margin-top:10px; justify-content:flex-end;">
+      <button class="btn" id="prompt-modal-cancel">CANCEL</button>
+      <button class="btn" id="prompt-modal-send" style="background:rgba(0,180,80,0.3); border-color:rgba(0,255,120,0.4); color:#88ffaa;">SEND TO ACE-STEP</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════ MAIN MODULE ══════════════════ -->
 <script type="module">
-import { PsytranceSynth, SEQ_INSTRUMENTS, SEQ_LABELS, SEQ_COLORS, SAMPLE_SLOTS } from './synth.js';
+import { LoopSynth, SEQ_INSTRUMENTS, SEQ_LABELS, SEQ_COLORS, SAMPLE_SLOTS } from './synth.js';
 
 const SLOT_COLORS = ['#ff8800','#88ff00','#0088ff','#ff0088'];
-import { PsychedelicVisualizer } from './visualizer.js';
+import { ReactiveVisualizer } from './visualizer.js';
 import { ImagenAPI } from './api.js';
 import { SampleBank } from './samples.js';
 
 const container = document.getElementById('canvas-container');
-const vis   = new PsychedelicVisualizer(container);
-const synth = new PsytranceSynth();
-const storedKey = localStorage.getItem('psy_api_key') || '';
+const vis   = new ReactiveVisualizer(container);
+const synth = new LoopSynth();
+const storedKey = localStorage.getItem('loop_api_key') || '';
 const api   = new ImagenAPI(storedKey);
 const sbank = new SampleBank('/ace-api');
 
 // Beat map persistence
 class MapStore {
-  constructor() { this.dbName = 'psy_maps'; this.storeName = 'maps'; this.db = null; }
+  constructor() { this.dbName = 'loop_maps'; this.storeName = 'maps'; this.db = null; }
   async open() {
     if (this.db) return;
     return new Promise((resolve, reject) => {
@@ -549,7 +702,7 @@ try {
       const k = m[1].trim();
       api.setApiKey(k);
       apiKeyIn.value = k;
-      if (!storedKey) localStorage.setItem('psy_api_key', k);
+      if (!storedKey) localStorage.setItem('loop_api_key', k);
       status.textContent = 'API key loaded from .env';
       setTimeout(() => { if (status.textContent.includes('.env')) status.textContent = ''; }, 2500);
     }
@@ -620,7 +773,7 @@ kalToggle.addEventListener('click', () => { kalToggle.classList.toggle('active')
 /* ── settings ── */
 settingsToggle.addEventListener('click', () => settingsPanel.classList.toggle('open'));
 $('save-key').addEventListener('click', () => {
-  const k=apiKeyIn.value.trim(); api.setApiKey(k); localStorage.setItem('psy_api_key',k);
+  const k=apiKeyIn.value.trim(); api.setApiKey(k); localStorage.setItem('loop_api_key',k);
   status.textContent='API key saved'; setTimeout(()=>{if(status.textContent==='API key saved')status.textContent='';},2000);
 });
 
@@ -660,6 +813,9 @@ const aceSteps = $('ace-steps');
 const aceStepsVal = $('ace-steps-val');
 const aceCfg = $('ace-cfg');
 const aceCfgVal = $('ace-cfg-val');
+const aceLmTemp = $('ace-lm-temp');
+const aceLmTempVal = $('ace-lm-temp-val');
+const aceSeed = $('ace-seed');
 const aceLyrics = $('ace-lyrics');
 const sampleBankEl = $('sample-bank');
 
@@ -676,6 +832,15 @@ aceSteps.addEventListener('input', () => { aceStepsVal.textContent = aceSteps.va
 // guidance scale slider
 aceCfg.addEventListener('input', () => { aceCfgVal.textContent = aceCfg.value; });
 
+// LM temperature slider
+aceLmTemp.addEventListener('input', () => { aceLmTempVal.textContent = aceLmTemp.value; });
+
+// seed controls
+$('ace-seed-rand').addEventListener('click', (e) => {
+  e.stopPropagation();
+  aceSeed.value = Math.floor(Math.random() * 2147483647);
+});
+
 // instrumental / vocal toggle
 $('ace-inst-toggle').addEventListener('click', () => {
   aceInstrumental = true;
@@ -690,22 +855,370 @@ $('ace-vox-toggle').addEventListener('click', () => {
   aceLyrics.style.display = '';
 });
 
-// tag chips — click to toggle and append/remove from prompt
-document.querySelectorAll('.tag-chip').forEach(chip => {
-  chip.addEventListener('click', e => {
-    e.stopPropagation();
-    const tag = chip.dataset.tag;
-    chip.classList.toggle('selected');
-    // rebuild prompt from selected tags
-    const selected = [...document.querySelectorAll('.tag-chip.selected')].map(c => c.dataset.tag);
-    acePrompt.value = selected.join(', ');
+/* ══════════════════ LLM TAG CASCADE ══════════════════ */
+
+const LLM_API = '/llm-api';
+const llmDot = $('llm-dot');
+const tagGrid = $('tag-grid');
+const tagBreadcrumb = $('tag-breadcrumb');
+const tagLoading = $('tag-loading');
+
+const GENRE_SEEDS = [
+  'Techno', 'House', 'Trance', 'Drum & Bass', 'Hip Hop', 'Ambient',
+  'Pop', 'Rock', 'Jazz', 'Classical', 'Metal', 'World Music'
+];
+
+const FALLBACK_TAGS = {
+  SUBGENRE: ['deep house', 'techno', 'progressive', 'minimal', 'breakbeat', 'synthwave'],
+  INST: ['synthesizer', 'drum machine', 'bass synth', 'hi-hat', 'synth pad', 'electric piano', 'sampler'],
+  MOOD: ['energetic', 'deep', 'euphoric', 'dark', 'uplifting', 'hypnotic'],
+  CHAR: ['driving rhythm', 'rolling bassline', 'layered textures', 'dynamic builds', 'tight groove'],
+  TIMBRE: ['warm', 'bright', 'punchy', 'crisp'],
+  ERA: ['90s rave', 'modern', 'retro'],
+  PROD: ['studio-polished', 'heavily layered', 'raw energy'],
+  REGION: ['berlin', 'detroit', 'london', 'ibiza', 'tokyo']
+};
+
+const tagState = {
+  path: [],
+  selected: {},
+  cache: new Map(),
+  llmOnline: false,
+  llmModel: null,
+  lastAutoPrompt: '',
+  customSuffix: '',
+};
+
+async function checkLLM() {
+  try {
+    const r = await fetch(`${LLM_API}/v1/models`, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      const data = await r.json();
+      tagState.llmModel = data.data?.[0]?.id || null;
+      tagState.llmOnline = true;
+    } else {
+      tagState.llmOnline = false;
+    }
+  } catch { tagState.llmOnline = false; }
+  llmDot.classList.toggle('on', tagState.llmOnline);
+  llmDot.classList.toggle('off', !tagState.llmOnline);
+}
+
+const TAG_SYSTEM_PROMPT = `You are a music production expert writing captions for an AI music generation model (ACE-Step). Given a genre path and optionally selected tags, output ONLY a valid JSON object with these 8 arrays. Tags should be DESCRIPTIVE and SPECIFIC — they'll be used directly as the model's caption input.
+
+- SUBGENRE: 6 specific subgenres or style variations (use established names)
+- INST: 7 specific instruments, synths, drum machines, or sound design elements (be precise: "detuned supersaw lead" not just "synth")
+- MOOD: 6 emotional/atmospheric qualities (combine adjective + context: "dark brooding tension" not just "dark")
+- CHAR: 5 sonic/production characteristics describing the sound (e.g. "rolling 16th-note bassline", "sidechain-pumped pads", "staccato acid stabs")
+- TIMBRE: 4 texture/tonal descriptors (e.g. "warm analog saturation", "crisp digital highs", "punchy compressed drums")
+- ERA: 3 era or stylistic references with context (e.g. "90s warehouse rave", "modern festival sound")
+- PROD: 3 production style descriptions (e.g. "heavily layered with stereo width", "raw and unpolished energy", "studio-polished clarity")
+- REGION: 5 cities, countries, or scenes central to this style
+
+All tags lowercase, 2-5 words for maximum descriptiveness. Use authentic genre terminology. When selected tags are provided, tailor ALL remaining categories to complement that specific combination — be cohesive, not generic.
+
+Examples:
+
+Input: goa trance
+{"SUBGENRE":["nitzhonot","dark goa","old school goa","full-on goa","psybient","suomi"],"INST":["303 acid bass line","analog kick drum","modular synth lead","delay feedback textures","atmospheric pad layers","fx riser sweeps","rhythmic sequencer patterns"],"MOOD":["euphoric transcendence","mystical journey","dark psychedelic tension","hypnotic trance state","blissful release","cosmic wonder"],"CHAR":["spiraling melodic sequences","acid squelch filter sweeps","layered psychedelic fx","long atmospheric builds","driving four-on-floor kick"],"TIMBRE":["bright cutting leads","metallic resonant filters","airy reverb tails","sharp transient attacks"],"ERA":["90s goa beach parties","early 2000s peak era","retro analog revival"],"PROD":["densely layered textures","heavy fx processing","studio-polished clarity"],"REGION":["goa india","israel","japan","london","sweden"]}
+
+Input: jazz
+{"SUBGENRE":["bebop","cool jazz","free jazz","fusion","hard bop","modal jazz"],"INST":["tenor saxophone","muted trumpet","upright acoustic bass","grand piano chords","brushed drum kit","vibraphone mallets","hollow body guitar"],"MOOD":["soulful late-night intimacy","introspective contemplation","playful rhythmic interplay","melancholic blue notes","uplifting swing energy","deep contemplative mood"],"CHAR":["improvised melodic runs","swing shuffle rhythm","rich extended harmony","call and response phrases","dynamic volume expression"],"TIMBRE":["warm round bass tones","smooth breathy saxophone","mellow piano resonance","crisp cymbal shimmer"],"ERA":["50s golden age bebop","60s modal exploration","modern jazz fusion"],"PROD":["live room recording","analog tape warmth","intimate close-mic setup"],"REGION":["new york","chicago","new orleans","paris","tokyo"]}`;
+
+function buildTagCacheKey() {
+  const parts = [tagState.path.join(' > ')];
+  for (const [cat, set] of Object.entries(tagState.selected)) {
+    if (set.size) parts.push(`${cat}:${[...set].sort().join(',')}`);
+  }
+  return parts.join('|');
+}
+
+function buildTagUserPrompt() {
+  let prompt = tagState.path.join(' > ');
+  const selParts = [];
+  for (const [cat, set] of Object.entries(tagState.selected)) {
+    if (set.size) selParts.push(`${cat.toLowerCase()}: ${[...set].join(', ')}`);
+  }
+  if (selParts.length) prompt += ' [selected: ' + selParts.join('; ') + ']';
+  return prompt;
+}
+
+async function llmGenerateTags() {
+  const key = buildTagCacheKey();
+  if (tagState.cache.has(key)) return tagState.cache.get(key);
+
+  const res = await fetch(`${LLM_API}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: tagState.llmModel || 'default',
+      messages: [
+        { role: 'system', content: TAG_SYSTEM_PROMPT },
+        { role: 'user', content: buildTagUserPrompt() }
+      ],
+      temperature: 0.6,
+      max_tokens: 400,
+    }),
   });
+
+  if (!res.ok) throw new Error(`LLM ${res.status}`);
+  const data = await res.json();
+  let content = data.choices?.[0]?.message?.content || '';
+
+  // strip <think>...</think> tags if present
+  content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Invalid LLM response');
+  const tags = JSON.parse(jsonMatch[0]);
+
+  tagState.cache.set(key, tags);
+  return tags;
+}
+
+function renderGenreRow() {
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;';
+  const label = document.createElement('span');
+  label.style.cssText = 'font-size:7px;color:#605080;width:32px;line-height:20px;';
+  label.textContent = 'GENRE';
+  row.appendChild(label);
+
+  GENRE_SEEDS.forEach(genre => {
+    const chip = document.createElement('button');
+    const g = genre.toLowerCase();
+    chip.className = 'btn tag-chip subgenre';
+    chip.textContent = g;
+    if (tagState.path.includes(g)) chip.classList.add('selected');
+    chip.addEventListener('click', e => {
+      e.stopPropagation();
+      const idx = tagState.path.indexOf(g);
+      if (idx >= 0) { tagState.path.splice(idx, 1); }
+      else { tagState.path.push(g); }
+      drillDown();
+    });
+    row.appendChild(chip);
+  });
+
+  tagGrid.appendChild(row);
+}
+
+function renderGenreSeeds() {
+  tagGrid.innerHTML = '';
+  renderGenreRow();
+}
+
+let tagRefreshId = 0; // debounce concurrent LLM calls
+
+async function drillDown() {
+  renderBreadcrumb();
+
+  // no genres selected — just show genre seeds
+  if (!tagState.path.length) {
+    renderGenreSeeds();
+    rebuildPromptFromTags();
+    return;
+  }
+
+  tagLoading.style.display = '';
+  const myId = ++tagRefreshId;
+
+  try {
+    let tags;
+    if (tagState.llmOnline) {
+      tags = await llmGenerateTags();
+    } else {
+      tags = FALLBACK_TAGS;
+    }
+    if (myId !== tagRefreshId) return; // stale response
+    renderCascadeTags(tags);
+  } catch (e) {
+    console.warn('LLM tag generation failed:', e);
+    if (myId === tagRefreshId) renderCascadeTags(FALLBACK_TAGS);
+  } finally {
+    if (myId === tagRefreshId) tagLoading.style.display = 'none';
+  }
+}
+
+function renderCascadeTags(data) {
+  tagGrid.innerHTML = '';
+  // always show genre seeds row at top
+  renderGenreRow();
+  const categories = ['SUBGENRE', 'INST', 'MOOD', 'CHAR', 'TIMBRE', 'ERA', 'PROD', 'REGION'];
+  const catLabels = { SUBGENRE: 'SUB', INST: 'INST', MOOD: 'MOOD', CHAR: 'CHAR', TIMBRE: 'TONE', ERA: 'ERA', PROD: 'PROD', REGION: 'REG' };
+
+  categories.forEach(cat => {
+    const items = data[cat] || [];
+    if (!items.length) return;
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;';
+    const label = document.createElement('span');
+    label.style.cssText = 'font-size:7px;color:#605080;width:32px;line-height:20px;';
+    label.textContent = catLabels[cat] || cat;
+    row.appendChild(label);
+
+    items.forEach(tag => {
+      const tagText = (typeof tag === 'string' ? tag : String(tag)).toLowerCase();
+      const chip = document.createElement('button');
+      chip.className = 'btn tag-chip' + (cat === 'SUBGENRE' ? ' subgenre' : '');
+      chip.textContent = tagText;
+
+      if (tagState.selected[cat]?.has(tagText)) chip.classList.add('selected');
+
+      chip.addEventListener('click', e => {
+        e.stopPropagation();
+        if (!tagState.selected[cat]) tagState.selected[cat] = new Set();
+        const set = tagState.selected[cat];
+        if (set.has(tagText)) { set.delete(tagText); }
+        else { set.add(tagText); }
+        rebuildPromptFromTags();
+        drillDown();
+      });
+
+      row.appendChild(chip);
+    });
+
+    tagGrid.appendChild(row);
+  });
+
+  rebuildPromptFromTags();
+}
+
+function renderBreadcrumb() {
+  tagBreadcrumb.innerHTML = '';
+
+  const root = document.createElement('span');
+  root.className = 'tag-breadcrumb-item';
+  root.textContent = 'ALL';
+  root.addEventListener('click', e => {
+    e.stopPropagation();
+    tagState.path = [];
+    renderGenreSeeds();
+    renderBreadcrumb();
+    rebuildPromptFromTags();
+  });
+  tagBreadcrumb.appendChild(root);
+
+  tagState.path.forEach((seg, i) => {
+    const sep = document.createElement('span');
+    sep.className = 'tag-breadcrumb-sep';
+    sep.textContent = ' \u203A ';
+    tagBreadcrumb.appendChild(sep);
+
+    const item = document.createElement('span');
+    item.className = 'tag-breadcrumb-item';
+    item.textContent = seg;
+    if (i < tagState.path.length - 1) {
+      item.addEventListener('click', e => {
+        e.stopPropagation();
+        tagState.path = tagState.path.slice(0, i + 1);
+        drillDown();
+      });
+    } else {
+      item.classList.add('current');
+    }
+    tagBreadcrumb.appendChild(item);
+  });
+}
+
+// Track user's manual typing in the prompt field
+// (programmatic .value= does NOT fire 'input', so this only catches real typing)
+acePrompt.addEventListener('input', () => {
+  const current = acePrompt.value;
+  const auto = tagState.lastAutoPrompt || '';
+  if (auto && current.startsWith(auto)) {
+    tagState.customSuffix = current.slice(auto.length);
+  } else if (!auto) {
+    tagState.customSuffix = current;
+  }
+  // if user edited the auto portion itself, keep customSuffix unchanged
 });
 
-// clear prompt + deselect all tags
+function rebuildPromptFromTags() {
+  // Build a structured caption per ACE-Step tutorial best practices.
+  // Group tags by dimension so the LM CoT rewrite gets clear input.
+  const genreParts = [...tagState.path];
+  const dimOrder = ['SUBGENRE','MOOD','INST','TIMBRE','CHAR','ERA','PROD','REGION'];
+  const dimParts = [];
+  for (const cat of dimOrder) {
+    const set = tagState.selected[cat];
+    if (set?.size) dimParts.push([...set].join(', '));
+  }
+  const allParts = [...genreParts, ...dimParts];
+  const newAuto = allParts.length ? allParts.join(', ') : '';
+
+  // combine auto tags + whatever user typed manually
+  let result = newAuto;
+  const suffix = (tagState.customSuffix || '').replace(/^[,\s]+/, '');
+  if (suffix) {
+    result = newAuto ? newAuto + ', ' + suffix : suffix;
+  }
+
+  acePrompt.value = result;
+  tagState.lastAutoPrompt = newAuto;
+}
+
+// Build rich instrumental lyrics with structure tags per ACE-Step tutorial.
+// Tells the model HOW the track should unfold over time — not just "[Instrumental]".
+function buildInstrumentalLyrics() {
+  const dur = +aceDur.value;
+  const moods = tagState.selected.MOOD ? [...tagState.selected.MOOD] : [];
+  const chars = tagState.selected.CHAR ? [...tagState.selected.CHAR] : [];
+  const insts = tagState.selected.INST ? [...tagState.selected.INST] : [];
+
+  // short clips: minimal but still structured
+  if (dur <= 15) {
+    const mood = moods[0] || 'energetic';
+    return `[Instrumental - ${mood}]`;
+  }
+
+  // medium clips (15-60s): intro + main + outro
+  if (dur <= 60) {
+    const introMood = moods[0] || 'ambient';
+    const mainMood = moods[1] || chars[0] || 'energetic';
+    return `[Intro - ${introMood}]\n\n[Main Theme - ${mainMood}]\n\n[Outro - fade out]`;
+  }
+
+  // longer tracks: full structure with builds and drops
+  const parts = [];
+  parts.push(`[Intro - atmospheric]`);
+  parts.push('');
+  parts.push(`[Build - rising energy]`);
+  parts.push('');
+  parts.push(`[Drop - ${moods[0] || 'powerful'}]`);
+  parts.push('');
+  if (dur > 120) {
+    parts.push(`[Breakdown - ${moods[1] || 'atmospheric'}]`);
+    parts.push('');
+    parts.push(`[Build - rising energy]`);
+    parts.push('');
+    parts.push(`[Drop - ${moods[0] || 'explosive'}]`);
+    parts.push('');
+  }
+  if (dur > 180) {
+    parts.push(`[Bridge - ${insts[0] || 'melodic'}]`);
+    parts.push('');
+    parts.push(`[Drop - ${chars[0] || 'high energy'}]`);
+    parts.push('');
+  }
+  parts.push(`[Outro - fade out]`);
+  return parts.join('\n');
+}
+
+// initial render
+renderGenreSeeds();
+checkLLM();
+
+// clear prompt + reset cascade
 $('ace-clear-tags').addEventListener('click', () => {
   acePrompt.value = '';
-  document.querySelectorAll('.tag-chip.selected').forEach(c => c.classList.remove('selected'));
+  tagState.path = [];
+  tagState.selected = {};
+  tagState.lastAutoPrompt = '';
+  tagState.customSuffix = '';
+  renderGenreSeeds();
+  tagBreadcrumb.innerHTML = '';
 });
 
 // download a sample as a WAV file
@@ -759,15 +1272,20 @@ $('ace-check').addEventListener('click', async () => {
 async function generateAceSample(prompt) {
   if (sbank.busy) return;
   aceGen.disabled = true;
+  const scaleMap = { minor:'Minor', phrygian:'Phrygian', harmonicMinor:'Harmonic Minor', dorian:'Dorian', locrian:'Locrian', hungarianMin:'Hungarian Minor' };
+  const seedVal = +aceSeed.value;
   try {
     await sbank.generateSample({
       prompt,
-      lyrics: aceLyrics.value.trim(),
+      lyrics: aceLyrics.value.trim() || (aceInstrumental ? buildInstrumentalLyrics() : '[Instrumental]'),
       duration: +aceDur.value,
       instrumental: aceInstrumental,
       inferenceSteps: +aceSteps.value,
       guidanceScale: +aceCfg.value,
       bpm: synth.bpm,
+      keyscale: synth.root + ' ' + (scaleMap[synth.scale] || 'Minor'),
+      seed: seedVal >= 0 ? seedVal : undefined,
+      lmTemperature: +aceLmTemp.value,
     });
     rebuildSampleBank();
     status.textContent = 'Sample generated!';
@@ -778,8 +1296,49 @@ async function generateAceSample(prompt) {
   }
 }
 
-aceGen.addEventListener('click', () => generateAceSample(acePrompt.value.trim()));
-acePrompt.addEventListener('keydown', e => { if (e.key === 'Enter') generateAceSample(acePrompt.value.trim()); });
+// prompt preview modal
+function openPromptPreview() {
+  const prompt = acePrompt.value.trim();
+  if (!prompt) { status.textContent = 'Enter a prompt first'; return; }
+  // caption should NOT contain BPM/key — those go as metadata params
+  $('prompt-modal-text').value = prompt;
+  // show auto-generated instrumental lyrics or user lyrics
+  if (aceInstrumental) {
+    $('prompt-modal-vocal').textContent = '(instrumental — structure tags auto-generated, editable)';
+    // use user's saved lyrics if they previously edited, else auto-generate
+    const saved = aceLyrics.value.trim();
+    $('prompt-modal-lyrics').value = saved || buildInstrumentalLyrics();
+    $('prompt-modal-lyrics').style.display = '';
+  } else {
+    $('prompt-modal-vocal').textContent = '(vocal mode)';
+    $('prompt-modal-lyrics').value = aceLyrics.value.trim();
+    $('prompt-modal-lyrics').style.display = '';
+  }
+  // map synth scale to keyscale for ACE-Step
+  const scaleToKeyscale = { minor:'Minor', phrygian:'Phrygian', harmonicMinor:'Harmonic Minor', dorian:'Dorian', locrian:'Locrian', hungarianMin:'Hungarian Minor' };
+  const keyscale = synth.root + ' ' + (scaleToKeyscale[synth.scale] || 'Minor');
+  const seedDisp = +aceSeed.value >= 0 ? aceSeed.value : 'random';
+  $('prompt-modal-info').textContent = `Duration: ${aceDur.value}s | Steps: ${aceSteps.value} | Temp: ${aceLmTemp.value} | BPM: ${synth.bpm} | Key: ${keyscale} | Seed: ${seedDisp}`;
+  $('prompt-modal').style.display = '';
+  $('prompt-modal-text').focus();
+}
+
+$('prompt-modal-close').addEventListener('click', () => { $('prompt-modal').style.display = 'none'; });
+$('prompt-modal-cancel').addEventListener('click', () => { $('prompt-modal').style.display = 'none'; });
+$('prompt-modal').addEventListener('click', e => { if (e.target === $('prompt-modal')) $('prompt-modal').style.display = 'none'; });
+
+$('prompt-modal-send').addEventListener('click', () => {
+  const finalPrompt = $('prompt-modal-text').value.trim();
+  if (!finalPrompt) return;
+  // update main prompt + lyrics from modal edits (both vocal and instrumental)
+  acePrompt.value = finalPrompt;
+  aceLyrics.value = $('prompt-modal-lyrics').value;
+  $('prompt-modal').style.display = 'none';
+  generateAceSample(finalPrompt);
+});
+
+aceGen.addEventListener('click', () => openPromptPreview());
+acePrompt.addEventListener('keydown', e => { if (e.key === 'Enter') openPromptPreview(); });
 
 // decode audio blob → AudioBuffer for Tone.js
 async function decodeBlob(blob) {
@@ -1186,6 +1745,142 @@ $('save-map').addEventListener('click', async () => {
   setTimeout(() => { if (status.textContent.includes('Saved')) status.textContent = ''; }, 2500);
 });
 
+/* ══════════════════ SONG ARRANGER ══════════════════ */
+
+const arrTrack = $('arr-track');
+const arrModeBtn = $('arr-mode');
+
+function buildArranger() {
+  arrTrack.innerHTML = '';
+  arrModeBtn.textContent = synth.songMode ? 'SONG' : 'LOOP';
+  arrModeBtn.classList.toggle('active', synth.songMode);
+
+  if (!synth.arrangement.length) {
+    arrTrack.innerHTML = '<span style="font-size:8px;color:#504070;">Add bars to build a song arrangement</span>';
+    return;
+  }
+
+  synth.arrangement.forEach((barIdx, arrIdx) => {
+    const block = document.createElement('div');
+    block.className = 'arr-block';
+    // Mark bridge bars (stored as negative indices: -1 = bridge after bar 0)
+    if (barIdx < 0) {
+      block.classList.add('bridge');
+      block.textContent = 'BR';
+      block.title = 'Bridge / transition';
+    } else {
+      block.textContent = barIdx + 1;
+      block.title = `Bar ${barIdx + 1} — click to view`;
+    }
+
+    block.addEventListener('click', e => {
+      if (e.target.classList.contains('arr-x')) return;
+      if (barIdx >= 0 && barIdx < synth.loopLength) {
+        seqBar = barIdx;
+        buildSequencer();
+      }
+    });
+
+    // remove button
+    const x = document.createElement('span');
+    x.className = 'arr-x';
+    x.textContent = '\u00D7';
+    x.addEventListener('click', e => {
+      e.stopPropagation();
+      synth.arrangement.splice(arrIdx, 1);
+      if (synth.songMode) synth._rebuildSequence();
+      buildArranger();
+    });
+    block.appendChild(x);
+
+    arrTrack.appendChild(block);
+  });
+}
+
+// mode toggle
+arrModeBtn.addEventListener('click', () => {
+  synth.songMode = !synth.songMode;
+  synth._rebuildSequence();
+  buildArranger();
+});
+
+// add current bar to arrangement
+$('arr-add').addEventListener('click', () => {
+  synth.arrangement.push(seqBar);
+  if (synth.songMode) synth._rebuildSequence();
+  buildArranger();
+});
+
+// copy current bar to a new bar at end of pattern, then add to arrangement
+$('arr-copy').addEventListener('click', () => {
+  const newBar = synth.loopLength;
+  synth.setLoopLength(newBar + 1);
+  synth.copyBar(seqBar, newBar);
+  synth.arrangement.push(newBar);
+  // update bar buttons
+  document.querySelectorAll('[data-bars]').forEach(b => b.classList.remove('active'));
+  if (synth.songMode) synth._rebuildSequence();
+  buildSequencer();
+  buildArranger();
+  status.textContent = `Copied bar ${seqBar + 1} → bar ${newBar + 1}`;
+});
+
+// generate bridge
+$('arr-bridge').addEventListener('click', () => {
+  // show a quick picker for bridge type
+  const types = ['buildup', 'breakdown', 'fill', 'drop'];
+  const labels = ['BUILD-UP', 'BREAKDOWN', 'FILL', 'DROP'];
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.style.cssText = 'z-index:250;';
+  const box = document.createElement('div');
+  box.className = 'modal-content';
+  box.style.cssText = 'width:min(300px,80vw); text-align:center;';
+  box.innerHTML = '<div class="section-title" style="margin-bottom:8px;">BRIDGE TYPE</div>';
+  types.forEach((t, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.style.cssText = 'margin:3px; min-width:80px;';
+    btn.textContent = labels[i];
+    btn.addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      const barIdx = synth.generateBridge(t);
+      synth.arrangement.push(barIdx);
+      if (synth.songMode) synth._rebuildSequence();
+      buildSequencer();
+      buildArranger();
+      status.textContent = `Added ${labels[i]} bridge (bar ${barIdx + 1})`;
+    });
+    box.appendChild(btn);
+  });
+  const cancel = document.createElement('button');
+  cancel.className = 'btn';
+  cancel.style.cssText = 'margin:8px 3px 0; font-size:9px;';
+  cancel.textContent = 'CANCEL';
+  cancel.addEventListener('click', () => document.body.removeChild(overlay));
+  box.appendChild(document.createElement('br'));
+  box.appendChild(cancel);
+  overlay.appendChild(box);
+  overlay.addEventListener('click', e => { if (e.target === overlay) document.body.removeChild(overlay); });
+  document.body.appendChild(overlay);
+});
+
+// clear arrangement
+$('arr-clear').addEventListener('click', () => {
+  synth.arrangement = [];
+  if (synth.songMode) synth._rebuildSequence();
+  buildArranger();
+});
+
+// arrangement position callback — highlight current block
+synth.onArrangementPos = (arrIdx) => {
+  arrTrack.querySelectorAll('.arr-block').forEach((b, i) => {
+    b.classList.toggle('active', i === arrIdx);
+  });
+};
+
+buildArranger();
+
 // initial build (uses default patterns from constructor)
 synth.generatePatterns();
 buildSequencer();
@@ -1556,6 +2251,227 @@ function rebuildLibrary() {
   } catch(_) {}
 })();
 
+/* ══════════════════ LORA STUDIO ══════════════════ */
+const LORA_API = '/ace-api/v1/lora';
+
+// Collapsible toggle
+document.getElementById('lora-toggle').addEventListener('click', () => {
+  const body = document.getElementById('lora-body');
+  const arrow = document.getElementById('lora-arrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+  if (body.classList.contains('open')) refreshLoRAStatus();
+});
+
+// DOM refs
+const loraDot = document.getElementById('lora-dot');
+const loraStatusLabel = document.getElementById('lora-status-label');
+const loraScaleSlider = document.getElementById('lora-scale');
+const loraScaleVal = document.getElementById('lora-scale-val');
+const loraPathInput = document.getElementById('lora-path');
+const loraLoadBtn = document.getElementById('lora-load');
+const loraUnloadBtn = document.getElementById('lora-unload');
+const loraOnOffBtn = document.getElementById('lora-onoff');
+const loraAdapterList = document.getElementById('lora-adapter-list');
+const loraProgress = document.getElementById('lora-progress');
+const loraTrainStatus = document.getElementById('lora-train-status');
+const loraTrainBtn = document.getElementById('lora-train');
+const loraStopBtn = document.getElementById('lora-stop');
+
+async function refreshLoRAStatus() {
+  try {
+    const r = await fetch(`${LORA_API}/status`);
+    const j = await r.json();
+    const s = j.data || {};
+    loraDot.className = 'lora-dot' + (s.active ? ' active' : s.loaded ? ' loaded' : '');
+    loraStatusLabel.textContent = s.active ? 'Active' : s.loaded ? 'Loaded (off)' : 'No adapter loaded';
+    loraScaleSlider.disabled = !s.loaded;
+    loraUnloadBtn.disabled = !s.loaded;
+    loraOnOffBtn.disabled = !s.loaded;
+    loraOnOffBtn.textContent = s.active ? 'OFF' : 'ON';
+    if (s.scale !== undefined) {
+      loraScaleSlider.value = Math.round(s.scale * 100);
+      loraScaleVal.textContent = s.scale.toFixed(1);
+    }
+  } catch(e) { loraStatusLabel.textContent = 'Status error'; }
+}
+
+// Load adapter
+loraLoadBtn.addEventListener('click', async () => {
+  const path = loraPathInput.value.trim();
+  if (!path) return;
+  loraLoadBtn.disabled = true;
+  try {
+    const r = await fetch(`${LORA_API}/load`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path}) });
+    const j = await r.json();
+    if (j.error) { loraStatusLabel.textContent = j.error; }
+    else { await refreshLoRAStatus(); }
+  } catch(e) { loraStatusLabel.textContent = 'Load failed'; }
+  loraLoadBtn.disabled = false;
+});
+
+// Unload adapter
+loraUnloadBtn.addEventListener('click', async () => {
+  try {
+    await fetch(`${LORA_API}/unload`, { method:'POST' });
+    await refreshLoRAStatus();
+  } catch(e) { loraStatusLabel.textContent = 'Unload failed'; }
+});
+
+// Toggle ON/OFF
+loraOnOffBtn.addEventListener('click', async () => {
+  const enable = loraOnOffBtn.textContent === 'ON';
+  try {
+    await fetch(`${LORA_API}/toggle`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled:enable}) });
+    await refreshLoRAStatus();
+  } catch(e) { loraStatusLabel.textContent = 'Toggle failed'; }
+});
+
+// Scale slider
+loraScaleSlider.addEventListener('change', async () => {
+  const scale = loraScaleSlider.value / 100;
+  loraScaleVal.textContent = scale.toFixed(1);
+  try {
+    await fetch(`${LORA_API}/scale`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({scale}) });
+  } catch(_) {}
+});
+loraScaleSlider.addEventListener('input', () => {
+  loraScaleVal.textContent = (loraScaleSlider.value / 100).toFixed(1);
+});
+
+// Adapter list
+async function refreshAdapterList() {
+  try {
+    const r = await fetch(`${LORA_API}/list`);
+    const j = await r.json();
+    const adapters = j.data || [];
+    loraAdapterList.innerHTML = '';
+    if (!adapters.length) {
+      loraAdapterList.innerHTML = '<div style="font-size:8px;color:#605080;padding:4px;">No adapters found</div>';
+      return;
+    }
+    for (const a of adapters) {
+      // Main adapter row (final or best available)
+      const item = document.createElement('div');
+      item.className = 'lora-adapter-item';
+      const label = a.has_final ? 'final' : 'adapter';
+      const ckptCount = a.checkpoints?.length || 0;
+      item.innerHTML = `<span>${a.name}</span><span class="lora-ckpts">${label}${ckptCount ? ' + ' + ckptCount + ' ckpts' : ''}</span>`;
+      item.addEventListener('click', () => {
+        loraPathInput.value = a.path;
+        loraPathInput.focus();
+      });
+      item.title = a.path;
+      loraAdapterList.appendChild(item);
+
+      // Show individual checkpoints as sub-items
+      if (a.checkpoints?.length) {
+        for (const ckpt of a.checkpoints) {
+          const sub = document.createElement('div');
+          sub.className = 'lora-adapter-item';
+          sub.style.paddingLeft = '16px';
+          sub.style.fontSize = '8px';
+          sub.style.opacity = '0.7';
+          sub.innerHTML = `<span>\u2514 ${ckpt.name}</span>`;
+          sub.addEventListener('click', () => {
+            loraPathInput.value = ckpt.path;
+            loraPathInput.focus();
+          });
+          sub.title = ckpt.path;
+          loraAdapterList.appendChild(sub);
+        }
+      }
+    }
+  } catch(e) { loraAdapterList.innerHTML = '<div style="font-size:8px;color:#ff6666;padding:4px;">Error loading adapters</div>'; }
+}
+document.getElementById('lora-refresh').addEventListener('click', refreshAdapterList);
+
+// Training param sliders
+function wireLoraSlider(id, valId, fmt) {
+  const sl = document.getElementById(id);
+  const vl = document.getElementById(valId);
+  sl.addEventListener('input', () => { vl.textContent = fmt(sl.value); });
+}
+wireLoraSlider('lora-rank', 'lora-rank-val', v => v);
+wireLoraSlider('lora-alpha', 'lora-alpha-val', v => v);
+wireLoraSlider('lora-epochs', 'lora-epochs-val', v => v);
+wireLoraSlider('lora-lr', 'lora-lr-val', v => {
+  const exp = parseFloat(v);
+  return exp === Math.round(exp) ? `1e${exp}` : `${Math.pow(10, exp).toExponential(0)}`;
+});
+
+// Preprocess
+document.getElementById('lora-preprocess').addEventListener('click', async () => {
+  const audioDir = document.getElementById('lora-audio-dir').value.trim();
+  if (!audioDir) return;
+  try {
+    const r = await fetch(`${LORA_API}/preprocess`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({audio_dir:audioDir}) });
+    const j = await r.json();
+    if (j.error) { loraTrainStatus.textContent = j.error; return; }
+    if (j.data?.output_dir) document.getElementById('lora-tensor-dir').value = j.data.output_dir;
+    startTrainingPoll();
+  } catch(e) { loraTrainStatus.textContent = 'Preprocess request failed'; }
+});
+
+// Start training
+loraTrainBtn.addEventListener('click', async () => {
+  const tensorDir = document.getElementById('lora-tensor-dir').value.trim();
+  if (!tensorDir) return;
+  const params = {
+    tensor_dir: tensorDir,
+    rank: parseInt(document.getElementById('lora-rank').value),
+    alpha: parseInt(document.getElementById('lora-alpha').value),
+    max_epochs: parseInt(document.getElementById('lora-epochs').value),
+    learning_rate: Math.pow(10, parseFloat(document.getElementById('lora-lr').value)),
+  };
+  loraTrainBtn.disabled = true;
+  try {
+    const r = await fetch(`${LORA_API}/train`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(params) });
+    const j = await r.json();
+    if (j.error) { loraTrainStatus.textContent = j.error; loraTrainBtn.disabled = false; return; }
+    loraStopBtn.disabled = false;
+    startTrainingPoll();
+  } catch(e) { loraTrainStatus.textContent = 'Train request failed'; loraTrainBtn.disabled = false; }
+});
+
+// Stop training
+loraStopBtn.addEventListener('click', async () => {
+  try { await fetch(`${LORA_API}/train/stop`, { method:'POST' }); } catch(_) {}
+});
+
+// Training status poll
+let _loraPollId = null;
+function startTrainingPoll() {
+  if (_loraPollId) clearInterval(_loraPollId);
+  _loraPollId = setInterval(async () => {
+    try {
+      const r = await fetch(`${LORA_API}/train/status`);
+      const j = await r.json();
+      const s = j.data || {};
+      loraTrainStatus.textContent = s.status_message || '';
+      if (s.max_epochs > 0) {
+        const pct = Math.min(100, (s.current_epoch / s.max_epochs) * 100);
+        loraProgress.style.width = pct + '%';
+      }
+      if (s.current_loss > 0) {
+        loraTrainStatus.textContent += ` | loss: ${s.current_loss.toFixed(4)}`;
+      }
+      if (s.started_at && (s.is_running || s.is_preprocessing)) {
+        const elapsed = Math.round((Date.now()/1000) - s.started_at);
+        const m = Math.floor(elapsed/60), sec = elapsed%60;
+        loraTrainStatus.textContent += ` | ${m}m${sec}s`;
+      }
+      if (!s.is_running && !s.is_preprocessing) {
+        clearInterval(_loraPollId);
+        _loraPollId = null;
+        loraTrainBtn.disabled = false;
+        loraStopBtn.disabled = true;
+        if (!s.error) refreshAdapterList();
+      }
+    } catch(_) {}
+  }, 3000);
+}
+
 /* ══════════════════ ANIMATION LOOP ══════════════════ */
 function animate() {
   requestAnimationFrame(animate);
@@ -1566,8 +2482,9 @@ function animate() {
   if (synth.isPlaying) {
     const p = synth.getLoopProgress();
     loopBar.style.width = (p*100).toFixed(1)+'%';
-    const currentBar = Math.floor(p*synth.loopLength)+1;
-    loopPos.textContent = `${currentBar}/${synth.loopLength}`;
+    const totalBars = (synth.songMode && synth.arrangement.length) ? synth.arrangement.length : synth.loopLength;
+    const currentBar = Math.floor(p * totalBars) + 1;
+    loopPos.textContent = synth.songMode ? `S${currentBar}/${totalBars}` : `${currentBar}/${synth.loopLength}`;
 
     // highlight current step in sequencer
     const curStep = synth._currentStep;

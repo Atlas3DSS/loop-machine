@@ -2,10 +2,11 @@
 """PSY LOOP MACHINE server
   - Serves static files from current directory
   - Proxies /ace-api/* requests to the ACE-Step API server
+  - Proxies /llm-api/* requests to the vLLM server (tag generation)
 
 Usage:
   python server.py [port]              # default port 8080
-  ACE_STEP_URL=http://host:8001 python server.py
+  ACE_STEP_URL=http://host:8001 LLM_URL=http://host:8002 python server.py
 """
 
 import http.server
@@ -16,6 +17,7 @@ import sys
 import os
 
 ACE_STEP_URL = os.environ.get('ACE_STEP_URL', 'http://localhost:8001')
+LLM_URL = os.environ.get('LLM_URL', 'http://localhost:8002')
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
 
 
@@ -26,8 +28,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
 
-    def _proxy(self, method):
-        target = ACE_STEP_URL + self.path[len('/ace-api'):]
+    def _proxy(self, method, base_url=ACE_STEP_URL, prefix='/ace-api'):
+        target = base_url + self.path[len(prefix):]
 
         headers = {}
         ct = self.headers.get('Content-Type')
@@ -78,11 +80,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/ace-api/'):
             return self._proxy('GET')
+        if self.path.startswith('/llm-api/'):
+            return self._proxy('GET', LLM_URL, '/llm-api')
         return super().do_GET()
 
     def do_POST(self):
         if self.path.startswith('/ace-api/'):
             return self._proxy('POST')
+        if self.path.startswith('/llm-api/'):
+            return self._proxy('POST', LLM_URL, '/llm-api')
         self.send_error(405)
 
     def do_OPTIONS(self):
@@ -93,7 +99,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     # quieter logging
     def log_message(self, fmt, *args):
         msg = fmt % args
-        if '/ace-api/' in msg:
+        if '/ace-api/' in msg or '/llm-api/' in msg:
             sys.stderr.write(f'  [proxy]  {msg}\n')
         elif not any(ext in msg for ext in ('.js', '.css', '.ico', '.map', '.env')):
             sys.stderr.write(f'  [static] {msg}\n')
@@ -102,5 +108,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 print(f'╔══════════════════════════════════════════════╗')
 print(f'║  PSY LOOP MACHINE  →  http://localhost:{PORT}')
 print(f'║  ACE-Step proxy    →  {ACE_STEP_URL}')
+print(f'║  LLM proxy         →  {LLM_URL}')
 print(f'╚══════════════════════════════════════════════╝')
 http.server.HTTPServer(('', PORT), Handler).serve_forever()

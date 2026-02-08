@@ -96,7 +96,7 @@ export class SampleBank {
    * Generate an audio sample via ACE-Step.
    * Returns { id, name, prompt, duration, audioBlob, ts }
    */
-  async generateSample({ prompt = '', lyrics = '', duration = 10, instrumental = true, inferenceSteps = 8, guidanceScale = 15, bpm = null }) {
+  async generateSample({ prompt = '', lyrics = '', duration = 10, instrumental = true, inferenceSteps = 8, guidanceScale = 1, bpm = null, keyscale = '', seed, lmTemperature = 0.85 }) {
     if (this.busy) throw new Error('Generation already in progress');
     this.busy = true;
 
@@ -108,14 +108,17 @@ export class SampleBank {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
-          lyrics: instrumental ? '[Instrumental]' : (lyrics || '[Instrumental]'),
+          lyrics: lyrics || '[Instrumental]',
           audio_duration: Math.max(10, duration),
           instrumental,
           thinking: true,
           use_cot_caption: true,   // LM rewrites/enhances the prompt
           use_cot_metas: true,     // LM fills missing metadata (BPM, key, time sig)
           use_cot_language: true,  // LM detects vocal language
-          ...(bpm ? { bpm } : {}), // hint BPM from synth to match tempo
+          ...(bpm ? { bpm } : {}),
+          ...(keyscale ? { keyscale } : {}),
+          ...(seed != null ? { seed } : {}),
+          lm_temperature: lmTemperature,
           batch_size: 1,
           inference_steps: inferenceSteps,
           guidance_scale: guidanceScale,

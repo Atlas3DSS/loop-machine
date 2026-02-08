@@ -1,4 +1,4 @@
-// visualizer.js - Psychedelic Three.js reactive visualizer
+// visualizer.js - Reactive Three.js audio visualizer
 
 import * as THREE from 'three';
 import { EffectComposer }   from 'three/addons/postprocessing/EffectComposer.js';
@@ -159,7 +159,7 @@ function lerpArr(a, b, t) { return a.map((v, i) => v + (b[i] - v) * t); }
 
 /* ═══════════════════════ VISUALIZER CLASS ═══════════════════════ */
 
-export class PsychedelicVisualizer {
+export class ReactiveVisualizer {
   constructor(container) {
     this.el   = container;
     this.time = 0;

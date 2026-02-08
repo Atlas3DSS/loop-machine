@@ -1,4 +1,4 @@
-// synth.js - Psytrance Audio Engine using Tone.js
+// synth.js - Loop Machine Audio Engine using Tone.js
 // Single master sequencer with editable step patterns
 
 const SCALES = {
@@ -169,15 +169,15 @@ export const SAMPLE_SLOTS    = 4;
 
 /* ═══════════════ MAIN CLASS ═══════════════ */
 
-export class PsytranceSynth {
+export class LoopSynth {
   constructor() {
-    this.bpm          = 144;
+    this.bpm          = 128;
     this.intensity    = 0.5;
     this.filterCutoff = 4000;
     this.loopLength   = 2;
     this.isPlaying    = false;
-    this.root         = 'A';
-    this.scale        = 'phrygian';
+    this.root         = 'C';
+    this.scale        = 'minor';
     this.sequences    = [];
     this._kick        = false;
     this._currentStep = 0;
@@ -190,6 +190,12 @@ export class PsytranceSynth {
     this.samplePlayers  = [null, null, null, null];
     this.sampleBuffers  = [null, null, null, null];
     this.sampleNames    = ['', '', '', ''];
+
+    // song arranger
+    this.arrangement   = [];     // ordered list of bar indices, e.g. [0,1,0,1,2,3]
+    this.songMode      = false;  // false = loop mode, true = song mode (play arrangement)
+    this._arrangementStep = 0;   // current position in arrangement playback
+    this.onArrangementPos = null; // callback(arrIdx, barIdx) for UI updates
 
     this.bassStyle = pick(BASS_STYLES);
     this.leadStyle = pick(LEAD_STYLES);
@@ -374,8 +380,8 @@ export class PsytranceSynth {
     if (was) this.stop();
     this._disposeSeqs();
 
+    const playbackSteps = this._getPlaybackSteps();
     const S = this.loopLength * 16;
-    const indices = Array.from({length: S}, (_, i) => i);
     const self = this;
     const rootCh = chordNotes(this.root, 3, this.scale, [0, 2, 4]);
     const altCh  = chordNotes(this.root, 3, this.scale, [5, 0, 2]);
@@ -400,9 +406,19 @@ export class PsytranceSynth {
       return t;
     }
 
+    // In song mode, seqIdx tracks position within the arrangement
+    let seqIdx = 0;
+
     const seq = new Tone.Sequence((time, step) => {
       self._currentStep = step;
       const p = self.patterns;
+
+      // fire arrangement position callback in song mode
+      if (self.songMode && self.arrangement.length && self.onArrangementPos) {
+        const arrIdx = Math.floor(seqIdx / 16);
+        self.onArrangementPos(arrIdx, self.arrangement[arrIdx] || 0);
+      }
+      seqIdx = (seqIdx + 1) % playbackSteps.length;
 
       // kick + sidechain
       if (p.kick[step] && canPlay('kick')) {
@@ -447,11 +463,13 @@ export class PsytranceSynth {
         const ch = (step > 0 && coin(0.3)) ? altCh : rootCh;
         self.pad.triggerAttackRelease(ch, '1m', time);
       }
-      // riser (last bar)
-      if (step === S - 16 && coin(0.6) && self.intensity >= 0.4)
+      // riser (last bar in loop, or last bar in arrangement)
+      const totalSteps = playbackSteps.length;
+      const stepsFromEnd = totalSteps - seqIdx;
+      if (stepsFromEnd === 16 && coin(0.6) && self.intensity >= 0.4)
         self.riser.triggerAttackRelease('1m', time);
 
-    }, indices, '16n');
+    }, playbackSteps, '16n');
 
     this.sequences = [seq];
     if (was) this.start();
@@ -561,6 +579,35 @@ export class PsytranceSynth {
     }
   }
 
+  /** Copy all patterns from one bar to another */
+  copyBar(srcBar, dstBar) {
+    const srcStart = srcBar * 16, dstStart = dstBar * 16;
+    for (const inst of SEQ_INSTRUMENTS) {
+      const p = this.patterns[inst];
+      const h = this.hits[inst];
+      if (!p) continue;
+      for (let i = 0; i < 16; i++) {
+        p[dstStart + i] = p[srcStart + i];
+        if (h) h[dstStart + i] = h[srcStart + i] || 0;
+      }
+    }
+  }
+
+  /** Build the flat step array for song mode (arrangement) or loop mode */
+  _getPlaybackSteps() {
+    if (this.songMode && this.arrangement.length > 0) {
+      // Build a flat array of step indices from the arrangement
+      const steps = [];
+      for (const barIdx of this.arrangement) {
+        const base = barIdx * 16;
+        for (let i = 0; i < 16; i++) steps.push(base + i);
+      }
+      return steps;
+    }
+    // loop mode: just play all bars sequentially
+    return Array.from({length: this.loopLength * 16}, (_, i) => i);
+  }
+
   /* ─────────── per-instrument mute/force ─────────── */
   cycleInstState(inst) {
     const states = ['normal', 'force', 'mute'];
@@ -586,6 +633,7 @@ export class PsytranceSynth {
       patterns: JSON.parse(JSON.stringify(this.patterns)),
       hits: JSON.parse(JSON.stringify(this.hits)),
       instState: { ...this.instState },
+      arrangement: [...this.arrangement],
     };
   }
 
@@ -601,6 +649,7 @@ export class PsytranceSynth {
     if (state.patterns) this.patterns = state.patterns;
     if (state.hits) this.hits = state.hits;
     if (state.instState) this.instState = state.instState;
+    if (state.arrangement) this.arrangement = state.arrangement;
     this._rebuildSequence();
   }
 
@@ -665,6 +714,94 @@ export class PsytranceSynth {
     if (this.samplePlayers[slot]) this.samplePlayers[slot].loop = loop;
   }
 
+  /** Generate a bridge/transition bar and add it to the pattern pool.
+   *  type: 'buildup' | 'breakdown' | 'fill' | 'drop'
+   *  Returns the bar index of the new bridge bar. */
+  generateBridge(type = 'buildup') {
+    const newBar = this.loopLength;
+    this.setLoopLength(newBar + 1);
+    const base = newBar * 16;
+
+    // Clear the new bar first
+    for (const inst of SEQ_INSTRUMENTS) {
+      for (let i = 0; i < 16; i++) {
+        this.patterns[inst][base + i] = null;
+        this.hits[inst][base + i] = 0;
+      }
+    }
+
+    const notes = scaleNotes(this.root, 2, this.scale, 8);
+    const highNotes = scaleNotes(this.root, 4, this.scale, 8);
+
+    switch (type) {
+      case 'buildup':
+        // Accelerating hats + rising perc density + riser
+        for (let i = 0; i < 16; i++) {
+          // hats: start sparse, get denser
+          if (i >= 12) { this.patterns.hat[base + i] = 'roll'; this.hits.hat[base + i] = 3; }
+          else if (i >= 8) { this.patterns.hat[base + i] = 'closed'; this.hits.hat[base + i] = 2; }
+          else if (i >= 4 && i % 2 === 0) { this.patterns.hat[base + i] = 'closed'; this.hits.hat[base + i] = 1; }
+          // kick: 4 on the floor, dropping out near end for tension
+          if (i % 4 === 0 && i < 12) { this.patterns.kick[base + i] = 'C1'; this.hits.kick[base + i] = 1; }
+          // perc fills in final quarter
+          if (i >= 12 && coin(0.7)) { this.patterns.perc[base + i] = 1; this.hits.perc[base + i] = 2; }
+          // snare/clap roll at end
+          if (i >= 14) { this.patterns.clap[base + i] = 1; this.hits.clap[base + i] = 3; }
+          // rising bass
+          if (i % 4 === 0) { this.patterns.bass[base + i] = m2n(n2m(this.root + '1') + Math.floor(i / 4) * 2); this.hits.bass[base + i] = 1; }
+        }
+        break;
+
+      case 'breakdown':
+        // Strip everything back — just pad + sparse acid
+        for (let i = 0; i < 16; i++) {
+          if (i % 8 === 0) { this.patterns.acid[base + i] = pick(notes); this.hits.acid[base + i] = 1; }
+          if (i === 0) { this.patterns.stab[base + i] = 1; this.hits.stab[base + i] = 1; }
+        }
+        break;
+
+      case 'fill':
+        // Dense drum fill — all perc instruments active
+        for (let i = 0; i < 16; i++) {
+          // kick pattern: syncopated
+          if ((i === 0 || i === 3 || i === 6 || i === 10 || i === 13) && coin(0.8)) {
+            this.patterns.kick[base + i] = 'C1'; this.hits.kick[base + i] = 1;
+          }
+          // snare rolls
+          if (i >= 4) { this.patterns.clap[base + i] = 1; this.hits.clap[base + i] = i >= 12 ? 3 : i >= 8 ? 2 : 1; }
+          // hats throughout
+          this.patterns.hat[base + i] = i % 4 === 2 ? 'open' : 'closed';
+          this.hits.hat[base + i] = 1;
+          // perc accents
+          if (i % 3 === 0) { this.patterns.perc[base + i] = 1; this.hits.perc[base + i] = 1; }
+        }
+        break;
+
+      case 'drop':
+        // Full energy: all instruments, heavy kick + bass
+        for (let i = 0; i < 16; i++) {
+          // four-on-floor kick
+          if (i % 4 === 0) { this.patterns.kick[base + i] = 'C1'; this.hits.kick[base + i] = 1; }
+          // rolling bass
+          this.patterns.bass[base + i] = m2n(n2m(this.root + '1') + (i % 2 ? 12 : 0));
+          this.hits.bass[base + i] = 1;
+          // hats
+          this.patterns.hat[base + i] = i % 4 === 2 ? 'open' : 'accent';
+          this.hits.hat[base + i] = 1;
+          // clap on 2 and 4
+          if (i % 8 === 4) { this.patterns.clap[base + i] = 1; this.hits.clap[base + i] = 1; }
+          // acid line
+          if (i % 2 === 0 && coin(0.7)) { this.patterns.acid[base + i] = pick(notes); this.hits.acid[base + i] = 1; }
+          // lead stabs
+          if ((i === 0 || i === 6 || i === 12) && coin(0.6)) { this.patterns.stab[base + i] = 1; this.hits.stab[base + i] = 1; }
+        }
+        break;
+    }
+
+    this._rebuildSequence();
+    return newBar;
+  }
+
   /* ─────────── randomize ─────────── */
   randomize() {
     this.root      = pick(ROOTS);
@@ -703,7 +840,9 @@ export class PsytranceSynth {
 
   getLoopProgress() {
     if (!this.isPlaying) return 0;
-    const barSec=(60/this.bpm)*4, loopSec=barSec*this.loopLength;
-    return (Tone.Transport.seconds%loopSec)/loopSec;
+    const barSec = (60 / this.bpm) * 4;
+    const totalBars = (this.songMode && this.arrangement.length) ? this.arrangement.length : this.loopLength;
+    const loopSec = barSec * totalBars;
+    return (Tone.Transport.seconds % loopSec) / loopSec;
   }
 }
