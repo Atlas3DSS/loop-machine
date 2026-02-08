@@ -1,6 +1,6 @@
 #  LOOP MACHINE
 
-Browser-based psytrance synthesizer with reactive 3D visuals, AI-powered audio generation, and LoRA fine-tuning.
+Browser-based trance synthesizer with reactive 3D visuals, AI-powered audio generation, and LoRA fine-tuning.
 
 ## Features
 
