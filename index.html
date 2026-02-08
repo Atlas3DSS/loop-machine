@@ -23,16 +23,26 @@ body {
 
 /* ── PANEL ── */
 #panel {
-  position:fixed; bottom:10px; left:50%; transform:translateX(-50%);
+  position:fixed; top:calc(100vh - 500px); left:calc(50% - min(340px, 47.5vw));
   width:min(680px,95vw); max-height:calc(100vh - 24px); overflow-y:auto; z-index:100;
   background:rgba(8,0,18,0.82); backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
-  border:1px solid rgba(180,0,255,0.35); border-radius:14px; padding:12px 18px 10px;
+  border:1px solid rgba(180,0,255,0.35); border-radius:14px; padding:0 18px 10px;
   box-shadow:0 0 40px rgba(120,0,255,0.15), inset 0 0 60px rgba(0,0,0,0.3);
   scrollbar-width:thin; scrollbar-color:rgba(180,0,255,0.3) transparent;
+  resize:both;
+}
+#panel-drag {
+  cursor:grab; padding:8px 0 4px; text-align:center; user-select:none;
+  border-bottom:1px solid rgba(180,0,255,0.15); margin:0 -18px 8px; padding-left:18px; padding-right:18px;
+}
+#panel-drag:active { cursor:grabbing; }
+#panel-drag::after {
+  content:''; display:block; width:40px; height:3px; margin:6px auto 0;
+  background:rgba(180,0,255,0.3); border-radius:2px;
 }
 #panel::-webkit-scrollbar { width:5px; }
 #panel::-webkit-scrollbar-thumb { background:rgba(180,0,255,0.3); border-radius:3px; }
-#panel h1 { text-align:center; font-size:14px; letter-spacing:6px; color:#c060ff; margin-bottom:8px; text-shadow:0 0 12px #a020f0; }
+#panel h1 { text-align:center; font-size:14px; letter-spacing:6px; color:#c060ff; margin:0; text-shadow:0 0 12px #a020f0; }
 
 /* rows */
 .row { display:flex; align-items:center; gap:8px; margin:4px 0; }
@@ -231,6 +241,14 @@ input[type=range]::-moz-range-thumb {
 .arr-block:hover .arr-x { display:flex; }
 
 /* ── LORA STUDIO ── */
+.collapse-section { margin:4px 0; }
+.collapse-header {
+  display:flex; align-items:center; gap:6px; cursor:pointer; padding:2px 0;
+}
+.collapse-header .collapse-arrow { font-size:8px; color:#8070a0; transition:transform .2s; display:inline-block; }
+.collapse-header .collapse-arrow.open { transform:rotate(90deg); }
+.collapse-body { display:none; padding:4px 0; }
+.collapse-body.open { display:block; }
 .lora-section { margin:4px 0; }
 .lora-header {
   display:flex; align-items:center; gap:6px; cursor:pointer; padding:2px 0;
@@ -274,7 +292,9 @@ input[type=range]::-moz-range-thumb {
 <div id="canvas-container"></div>
 
 <div id="panel">
-  <h1>LOOP MACHINE</h1>
+  <div id="panel-drag">
+    <h1>LOOP MACHINE</h1>
+  </div>
 
   <!-- transport -->
   <div class="row" style="justify-content:center; gap:8px; margin-bottom:6px;">
@@ -308,168 +328,206 @@ input[type=range]::-moz-range-thumb {
   </div>
 
   <!-- sound design -->
-  <div class="divider"></div>
-  <div class="section-title">SOUND DESIGN</div>
-  <div class="slider-grid">
-    <div class="si" title="Bass note decay — how long each bass note rings. Short (0.02-0.08) = tight staccato hits. Long (0.2-0.5) = boomy, sustained bass. Very audible even with small changes.">
-      <label>BASS</label>
-      <input type="range" id="bass-decay" min="0.02" max="0.5" value="0.08" step="0.01">
-      <span class="val" id="bd-val">0.08</span>
+  <div class="collapse-section">
+    <div class="divider"></div>
+    <div class="collapse-header" data-collapse="sound-body">
+      <span class="collapse-arrow open">&#9654;</span>
+      <span class="section-title" style="margin:0;">SOUND DESIGN</span>
     </div>
-    <div class="si" title="Acid line filter resonance (Q). Controls the squelchy character of the 303-style synth. Low (1-5) = subtle, smooth. High (15-25) = screaming, self-oscillating acid. Gets wild fast above 18.">
-      <label>RESO</label>
-      <input type="range" id="acid-reso" min="1" max="25" value="14" step="0.5">
-      <span class="val" id="ar-val">14</span>
-    </div>
-    <div class="si" title="Acid LFO rate — speed of the filter wobble on the acid line. Slow (0.25-1) = gentle sweeps. Fast (4-8) = rapid wah-wah. Syncs musically around 1, 2, or 4.">
-      <label>RATE</label>
-      <input type="range" id="acid-rate" min="0.25" max="8" value="2" step="0.25">
-      <span class="val" id="al-val">2.0</span>
-    </div>
-    <div class="si" title="Reverb wet/dry mix on lead and pad. 0 = completely dry. 1 = fully washed out in reverb. 0.2-0.5 is the sweet spot for spacey leads.">
-      <label>VERB</label>
-      <input type="range" id="reverb" min="0" max="1" value="0.35" step="0.01">
-      <span class="val" id="rv-val">0.35</span>
-    </div>
-    <div class="si" title="Ping-pong delay mix on lead and acid. 0 = no delay. Higher = more echoes bouncing left-right. Above 0.5 gets washy. Good for spacey trails at 0.2-0.4.">
-      <label>DLY</label>
-      <input type="range" id="delay" min="0" max="0.8" value="0.3" step="0.01">
-      <span class="val" id="dl-val">0.30</span>
-    </div>
-    <div class="si" title="Master distortion/overdrive. 0 = clean signal. Even small amounts (0.05-0.15) add grit. Above 0.5 gets aggressive and crunchy. Applied to everything through the master bus.">
-      <label>DIST</label>
-      <input type="range" id="distortion" min="0" max="1" value="0" step="0.01">
-      <span class="val" id="ds-val">0</span>
-    </div>
-    <div class="si" title="Kick drum pitch sweep speed — how fast the kick drops from high to low. Short (0.01-0.05) = tight, punchy click. Long (0.1-0.2) = boomy, pitched-down thud. Very sensitive — small changes reshape the kick character.">
-      <label>KICK</label>
-      <input type="range" id="kick-punch" min="0.01" max="0.2" value="0.05" step="0.005">
-      <span class="val" id="kp-val">0.05</span>
-    </div>
-    <div class="si" style="justify-content:flex-end; gap:4px;">
-      <div class="loop-btns">
-        <button class="btn" data-bars="1">1</button>
-        <button class="btn active" data-bars="2">2</button>
-        <button class="btn" data-bars="3">3</button>
-        <button class="btn" data-bars="4">4</button>
+    <div class="collapse-body open" id="sound-body">
+      <div class="slider-grid">
+        <div class="si" title="Bass note decay — how long each bass note rings. Short (0.02-0.08) = tight staccato hits. Long (0.2-0.5) = boomy, sustained bass. Very audible even with small changes.">
+          <label>BASS</label>
+          <input type="range" id="bass-decay" min="0.02" max="0.5" value="0.08" step="0.01">
+          <span class="val" id="bd-val">0.08</span>
+        </div>
+        <div class="si" title="Acid line filter resonance (Q). Controls the squelchy character of the 303-style synth. Low (1-5) = subtle, smooth. High (15-25) = screaming, self-oscillating acid. Gets wild fast above 18.">
+          <label>RESO</label>
+          <input type="range" id="acid-reso" min="1" max="25" value="14" step="0.5">
+          <span class="val" id="ar-val">14</span>
+        </div>
+        <div class="si" title="Acid LFO rate — speed of the filter wobble on the acid line. Slow (0.25-1) = gentle sweeps. Fast (4-8) = rapid wah-wah. Syncs musically around 1, 2, or 4.">
+          <label>RATE</label>
+          <input type="range" id="acid-rate" min="0.25" max="8" value="2" step="0.25">
+          <span class="val" id="al-val">2.0</span>
+        </div>
+        <div class="si" title="Reverb wet/dry mix on lead and pad. 0 = completely dry. 1 = fully washed out in reverb. 0.2-0.5 is the sweet spot for spacey leads.">
+          <label>VERB</label>
+          <input type="range" id="reverb" min="0" max="1" value="0.35" step="0.01">
+          <span class="val" id="rv-val">0.35</span>
+        </div>
+        <div class="si" title="Ping-pong delay mix on lead and acid. 0 = no delay. Higher = more echoes bouncing left-right. Above 0.5 gets washy. Good for spacey trails at 0.2-0.4.">
+          <label>DLY</label>
+          <input type="range" id="delay" min="0" max="0.8" value="0.3" step="0.01">
+          <span class="val" id="dl-val">0.30</span>
+        </div>
+        <div class="si" title="Master distortion/overdrive. 0 = clean signal. Even small amounts (0.05-0.15) add grit. Above 0.5 gets aggressive and crunchy. Applied to everything through the master bus.">
+          <label>DIST</label>
+          <input type="range" id="distortion" min="0" max="1" value="0" step="0.01">
+          <span class="val" id="ds-val">0</span>
+        </div>
+        <div class="si" title="Kick drum pitch sweep speed — how fast the kick drops from high to low. Short (0.01-0.05) = tight, punchy click. Long (0.1-0.2) = boomy, pitched-down thud. Very sensitive — small changes reshape the kick character.">
+          <label>KICK</label>
+          <input type="range" id="kick-punch" min="0.01" max="0.2" value="0.05" step="0.005">
+          <span class="val" id="kp-val">0.05</span>
+        </div>
+        <div class="si" style="justify-content:flex-end; gap:4px;">
+          <div class="loop-btns">
+            <button class="btn" data-bars="1">1</button>
+            <button class="btn active" data-bars="2">2</button>
+            <button class="btn" data-bars="3">3</button>
+            <button class="btn" data-bars="4">4</button>
+          </div>
+          <span style="font-size:9px;color:#8070a0;">bars</span>
+          <button class="btn active" id="kaleido-toggle" style="margin-left:4px; font-size:9px;">KAL</button>
+        </div>
       </div>
-      <span style="font-size:9px;color:#8070a0;">bars</span>
-      <button class="btn active" id="kaleido-toggle" style="margin-left:4px; font-size:9px;">KAL</button>
     </div>
   </div>
 
   <!-- step sequencer -->
-  <div class="divider"></div>
-  <div class="seq-header">
-    <span>STEP SEQUENCER</span>
-    <select id="seq-root" style="font-size:9px; background:#1a1230; color:#c0b0e0; border:1px solid #302050; border-radius:3px; padding:1px 2px;"></select>
-    <select id="seq-scale" style="font-size:9px; background:#1a1230; color:#c0b0e0; border:1px solid #302050; border-radius:3px; padding:1px 2px;"></select>
-    <div class="bar-tabs" id="bar-tabs"></div>
-    <button class="btn" id="clear-bar" style="font-size:9px;">CLR</button>
-    <button class="btn" id="save-map" style="font-size:9px;">SAVE</button>
+  <div class="collapse-section">
+    <div class="divider"></div>
+    <div class="collapse-header" data-collapse="seq-body">
+      <span class="collapse-arrow open">&#9654;</span>
+      <span class="section-title" style="margin:0;">STEP SEQUENCER</span>
+      <select id="seq-root" style="font-size:9px; background:#1a1230; color:#c0b0e0; border:1px solid #302050; border-radius:3px; padding:1px 2px;" onclick="event.stopPropagation()"></select>
+      <select id="seq-scale" style="font-size:9px; background:#1a1230; color:#c0b0e0; border:1px solid #302050; border-radius:3px; padding:1px 2px;" onclick="event.stopPropagation()"></select>
+    </div>
+    <div class="collapse-body open" id="seq-body">
+      <div class="seq-header" style="margin-top:2px;">
+        <div class="bar-tabs" id="bar-tabs"></div>
+        <button class="btn" id="clear-bar" style="font-size:9px;">CLR</button>
+        <button class="btn" id="save-map" style="font-size:9px;">SAVE</button>
+        <button class="btn" id="export-wav" style="font-size:9px;">WAV</button>
+      </div>
+      <div id="genre-presets" style="display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;"></div>
+      <div id="seq-styles" style="display:flex; flex-wrap:wrap; gap:3px; margin:2px 0; align-items:center;"></div>
+      <div id="seq-nums" class="seq-nums"></div>
+      <div id="sequencer"></div>
+
+      <!-- progress -->
+      <div class="progress-wrap">
+        <div class="progress-bar" id="loop-bar"></div>
+        <span class="progress-label" id="loop-pos"></span>
+      </div>
+
+      <!-- song arranger -->
+      <div style="display:flex; align-items:center; gap:6px; margin:4px 0 2px;">
+        <span class="section-title">ARRANGER</span>
+        <button class="btn" id="arr-mode" style="font-size:8px; padding:1px 6px;">LOOP</button>
+        <button class="btn" id="arr-add" style="font-size:8px; padding:1px 6px;">+ BAR</button>
+        <button class="btn" id="arr-copy" style="font-size:8px; padding:1px 6px;" title="Copy current bar to end of arrangement">COPY</button>
+        <button class="btn" id="arr-bridge" style="font-size:8px; padding:1px 6px;" title="Generate a bridge/transition bar">BRIDGE</button>
+        <button class="btn" id="arr-clear" style="font-size:8px; padding:1px 6px;">CLR</button>
+      </div>
+      <div id="arr-track" class="arr-track"></div>
+
+      <div id="maps-list" style="max-height:80px; overflow-y:auto; margin:2px 0;"></div>
+    </div>
   </div>
-  <div id="genre-presets" style="display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;"></div>
-  <div id="seq-styles" style="display:flex; flex-wrap:wrap; gap:3px; margin:2px 0; align-items:center;"></div>
-  <div id="seq-nums" class="seq-nums"></div>
-  <div id="sequencer"></div>
-
-  <!-- progress -->
-  <div class="progress-wrap">
-    <div class="progress-bar" id="loop-bar"></div>
-    <span class="progress-label" id="loop-pos"></span>
-  </div>
-
-  <!-- song arranger -->
-  <div style="display:flex; align-items:center; gap:6px; margin:4px 0 2px;">
-    <span class="section-title">ARRANGER</span>
-    <button class="btn" id="arr-mode" style="font-size:8px; padding:1px 6px;">LOOP</button>
-    <button class="btn" id="arr-add" style="font-size:8px; padding:1px 6px;">+ BAR</button>
-    <button class="btn" id="arr-copy" style="font-size:8px; padding:1px 6px;" title="Copy current bar to end of arrangement">COPY</button>
-    <button class="btn" id="arr-bridge" style="font-size:8px; padding:1px 6px;" title="Generate a bridge/transition bar">BRIDGE</button>
-    <button class="btn" id="arr-clear" style="font-size:8px; padding:1px 6px;">CLR</button>
-  </div>
-  <div id="arr-track" class="arr-track"></div>
-
-  <div id="maps-list" style="max-height:80px; overflow-y:auto; margin:2px 0;"></div>
-
-  <div class="divider"></div>
 
   <!-- textures -->
-  <div class="tex-row">
-    <input type="text" id="tex-prompt" placeholder="texture style...">
-    <button class="btn" id="tex-gen">GENERATE</button>
+  <div class="collapse-section">
+    <div class="divider"></div>
+    <div class="collapse-header" data-collapse="tex-body">
+      <span class="collapse-arrow">&#9654;</span>
+      <span class="section-title" style="margin:0;">TEXTURES</span>
+    </div>
+    <div class="collapse-body" id="tex-body">
+      <div class="tex-row">
+        <input type="text" id="tex-prompt" placeholder="texture style...">
+        <button class="btn" id="tex-gen">GENERATE</button>
+      </div>
+      <div class="presets">
+        <button class="btn" data-p="abstract geometric patterns, neon gradients">neon</button>
+        <button class="btn" data-p="dark organic tendrils, bioluminescent">organic</button>
+        <button class="btn" data-p="fractal mandelbrot zoom, electric">fractal</button>
+        <button class="btn" data-p="cyberpunk circuitry, glitch art">cyber</button>
+      </div>
+      <div class="tex-row" style="gap:6px;">
+        <button class="btn" id="tex-tunnel">Tunnel</button>
+        <button class="btn" id="tex-geo">Geometry</button>
+        <button class="btn" id="tex-clear">Clear</button>
+      </div>
+      <div class="gallery" id="gallery"></div>
+    </div>
   </div>
-  <div class="presets">
-    <button class="btn" data-p="abstract geometric patterns, neon gradients">neon</button>
-    <button class="btn" data-p="dark organic tendrils, bioluminescent">organic</button>
-    <button class="btn" data-p="fractal mandelbrot zoom, electric">fractal</button>
-    <button class="btn" data-p="cyberpunk circuitry, glitch art">cyber</button>
-  </div>
-  <div class="tex-row" style="gap:6px;">
-    <button class="btn" id="tex-tunnel">Tunnel</button>
-    <button class="btn" id="tex-geo">Geometry</button>
-    <button class="btn" id="tex-clear">Clear</button>
-  </div>
-  <div class="gallery" id="gallery"></div>
 
   <!-- ACE-Step audio generator -->
-  <div class="divider"></div>
-  <div class="section-title"><span class="ace-dot off" id="ace-dot"></span>ACE-STEP SAMPLE GENERATOR <span class="ace-dot off" id="llm-dot" title="LLM Tag Generator" style="margin-left:6px;"></span></div>
-  <div class="tex-row">
-    <input type="text" id="ace-prompt" placeholder="describe the sound to generate...">
-    <button class="btn" id="ace-gen">GENERATE</button>
-  </div>
+  <div class="collapse-section">
+    <div class="divider"></div>
+    <div class="collapse-header" data-collapse="ace-body">
+      <span class="collapse-arrow open">&#9654;</span>
+      <span class="ace-dot off" id="ace-dot"></span>
+      <span class="section-title" style="margin:0;">SAMPLE GENERATOR</span>
+      <span class="ace-dot off" id="llm-dot" title="LLM Tag Generator" style="margin-left:4px;"></span>
+    </div>
+    <div class="collapse-body open" id="ace-body">
+      <div class="tex-row">
+        <input type="text" id="ace-prompt" placeholder="describe the sound to generate...">
+        <button class="btn" id="ace-gen">GENERATE</button>
+      </div>
 
-  <!-- dynamic tag cascade (LLM-powered) -->
-  <div id="tag-cascade" style="margin:3px 0;">
-    <div id="tag-breadcrumb" style="display:flex; align-items:center; gap:3px; margin:2px 0; flex-wrap:wrap;"></div>
-    <div id="tag-loading" style="display:none; font-size:8px; color:#8070a0; margin:3px 0;"><span class="tag-spinner"></span> Loading tags...</div>
-    <div id="tag-grid"></div>
-  </div>
-  <button class="btn" id="ace-clear-tags" style="font-size:8px; padding:1px 6px; margin-bottom:3px;">CLEAR PROMPT</button>
+      <!-- dynamic tag cascade (LLM-powered) -->
+      <div id="tag-cascade" style="margin:3px 0;">
+        <div id="tag-breadcrumb" style="display:flex; align-items:center; gap:3px; margin:2px 0; flex-wrap:wrap;"></div>
+        <div id="tag-loading" style="display:none; font-size:8px; color:#8070a0; margin:3px 0;"><span class="tag-spinner"></span> Loading tags...</div>
+        <div id="tag-grid"></div>
+      </div>
+      <button class="btn" id="ace-clear-tags" style="font-size:8px; padding:1px 6px; margin-bottom:3px;">CLEAR PROMPT</button>
 
-  <!-- vocal / instrumental toggle + lyrics -->
-  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;">
-    <button class="btn active" id="ace-inst-toggle" style="font-size:9px;">INSTRUMENTAL</button>
-    <button class="btn" id="ace-vox-toggle" style="font-size:9px;">VOCAL</button>
-  </div>
-  <textarea id="ace-lyrics" placeholder="lyrics / vocal content..." style="display:none; width:100%; height:48px; resize:vertical; padding:4px 8px; border-radius:4px; border:1px solid rgba(180,0,255,0.3); background:rgba(20,0,40,0.6); color:#d0b0ff; font-family:inherit; font-size:10px; outline:none; margin:2px 0;"></textarea>
+      <!-- vocal / instrumental toggle + lyrics -->
+      <div style="display:flex; align-items:center; gap:6px; margin:3px 0;">
+        <button class="btn active" id="ace-inst-toggle" style="font-size:9px;">INSTRUMENTAL</button>
+        <button class="btn" id="ace-vox-toggle" style="font-size:9px;">VOCAL</button>
+      </div>
+      <textarea id="ace-lyrics" placeholder="lyrics / vocal content..." style="display:none; width:100%; height:48px; resize:vertical; padding:4px 8px; border-radius:4px; border:1px solid rgba(180,0,255,0.3); background:rgba(20,0,40,0.6); color:#d0b0ff; font-family:inherit; font-size:10px; outline:none; margin:2px 0;"></textarea>
 
-  <!-- duration + quality sliders -->
-  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Duration of the generated audio. ACE-Step minimum is 10s internally — shorter clips are trimmed after generation.">
-    <label style="font-size:9px;color:#8070a0;width:28px;">DUR</label>
-    <input type="range" id="ace-dur" min="1" max="240" value="10" step="1" style="flex:1;">
-    <span class="val" id="ace-dur-val" style="width:30px;">10s</span>
+      <!-- duration + quality sliders -->
+      <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Duration of the generated audio. ACE-Step minimum is 10s internally — shorter clips are trimmed after generation.">
+        <label style="font-size:9px;color:#8070a0;width:28px;">DUR</label>
+        <input type="range" id="ace-dur" min="1" max="240" value="120" step="1" style="flex:1;">
+        <span class="val" id="ace-dur-val" style="width:30px;">120s</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Inference steps — higher = better quality but slower. 4=fast/rough, 8=default, 16=high, 32=best. Each doubling roughly doubles generation time.">
+        <label style="font-size:9px;color:#8070a0;width:28px;">QUAL</label>
+        <input type="range" id="ace-steps" min="4" max="32" value="32" step="4" style="flex:1;">
+        <span class="val" id="ace-steps-val" style="width:30px;">32</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Guidance scale (CFG) — only effective for SFT/Base models. Turbo (8 steps) ignores this. For SFT: 3-7 = creative, 7-15 = balanced, 15+ = strict.">
+        <label style="font-size:9px;color:#8070a0;width:28px;">CFG</label>
+        <input type="range" id="ace-cfg" min="1" max="25" value="17.5" step="0.5" style="flex:1;">
+        <span class="val" id="ace-cfg-val" style="width:30px;">17.5</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="LM Temperature — controls creativity of the language model planner. Lower = conservative/deterministic. Higher = creative/surprising. Default: 0.85.">
+        <label style="font-size:9px;color:#8070a0;width:28px;">TEMP</label>
+        <input type="range" id="ace-lm-temp" min="0.1" max="1.5" value="0.85" step="0.05" style="flex:1;">
+        <span class="val" id="ace-lm-temp-val" style="width:30px;">0.85</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Seed — fixed seed for reproducible results. Set to -1 for random. Use a fixed seed to compare prompt changes without random variation.">
+        <label style="font-size:9px;color:#8070a0;width:28px;">SEED</label>
+        <input type="number" id="ace-seed" value="-1" min="-1" max="2147483647" style="flex:1; padding:2px 6px; border-radius:4px; border:1px solid rgba(180,0,255,0.3); background:rgba(20,0,40,0.6); color:#d0b0ff; font-family:inherit; font-size:10px; outline:none; width:60px;">
+        <button class="btn" id="ace-seed-rand" style="font-size:8px; padding:1px 6px;" title="Randomize seed">🎲</button>
+      </div>
+      <div style="display:flex; align-items:center; margin-top:4px;">
+        <span class="section-title">SAMPLE BANK</span>
+        <button class="btn" id="open-library" style="font-size:8px; padding:1px 6px; margin-left:auto;">LIBRARY</button>
+      </div>
+      <div id="sample-bank" class="sample-bank"></div>
+    </div>
   </div>
-  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Inference steps — higher = better quality but slower. 4=fast/rough, 8=default, 16=high, 32=best. Each doubling roughly doubles generation time.">
-    <label style="font-size:9px;color:#8070a0;width:28px;">QUAL</label>
-    <input type="range" id="ace-steps" min="4" max="32" value="8" step="4" style="flex:1;">
-    <span class="val" id="ace-steps-val" style="width:30px;">8</span>
-  </div>
-  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Guidance scale (CFG) — only effective for SFT/Base models. Turbo (8 steps) ignores this. For SFT: 3-7 = creative, 7-15 = balanced, 15+ = strict.">
-    <label style="font-size:9px;color:#8070a0;width:28px;">CFG</label>
-    <input type="range" id="ace-cfg" min="1" max="25" value="1" step="0.5" style="flex:1;">
-    <span class="val" id="ace-cfg-val" style="width:30px;">1</span>
-  </div>
-  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="LM Temperature — controls creativity of the language model planner. Lower = conservative/deterministic. Higher = creative/surprising. Default: 0.85.">
-    <label style="font-size:9px;color:#8070a0;width:28px;">TEMP</label>
-    <input type="range" id="ace-lm-temp" min="0.1" max="1.5" value="0.85" step="0.05" style="flex:1;">
-    <span class="val" id="ace-lm-temp-val" style="width:30px;">0.85</span>
-  </div>
-  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Seed — fixed seed for reproducible results. Set to -1 for random. Use a fixed seed to compare prompt changes without random variation.">
-    <label style="font-size:9px;color:#8070a0;width:28px;">SEED</label>
-    <input type="number" id="ace-seed" value="-1" min="-1" max="2147483647" style="flex:1; padding:2px 6px; border-radius:4px; border:1px solid rgba(180,0,255,0.3); background:rgba(20,0,40,0.6); color:#d0b0ff; font-family:inherit; font-size:10px; outline:none; width:60px;">
-    <button class="btn" id="ace-seed-rand" style="font-size:8px; padding:1px 6px;" title="Randomize seed">🎲</button>
-  </div>
-  <div style="display:flex; align-items:center; margin-top:4px;">
-    <span class="section-title">SAMPLE BANK</span>
-    <button class="btn" id="open-library" style="font-size:8px; padding:1px 6px; margin-left:auto;">LIBRARY</button>
-  </div>
-  <div id="sample-bank" class="sample-bank"></div>
 
   <!-- sample mixer -->
-  <div class="section-title" style="margin-top:4px;">SAMPLE MIXER</div>
-  <div id="sample-mixer"></div>
+  <div class="collapse-section">
+    <div class="collapse-header" data-collapse="mixer-body" style="margin-top:4px;">
+      <span class="collapse-arrow">&#9654;</span>
+      <span class="section-title" style="margin:0;">SAMPLE MIXER</span>
+    </div>
+    <div class="collapse-body" id="mixer-body">
+      <div id="sample-mixer"></div>
+    </div>
+  </div>
 
   <!-- lora studio -->
   <div class="lora-section">
@@ -644,6 +702,33 @@ const storedKey = localStorage.getItem('loop_api_key') || '';
 const api   = new ImagenAPI(storedKey);
 const sbank = new SampleBank('/ace-api');
 
+/* ── panel drag ── */
+{
+  const panel = document.getElementById('panel');
+  const drag  = document.getElementById('panel-drag');
+  let dragging = false, ox = 0, oy = 0;
+
+  drag.addEventListener('pointerdown', e => {
+    if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+    dragging = true;
+    ox = e.clientX - panel.offsetLeft;
+    oy = e.clientY - panel.offsetTop;
+    drag.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  drag.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const x = Math.max(0, Math.min(window.innerWidth - 60, e.clientX - ox));
+    const y = Math.max(0, Math.min(window.innerHeight - 40, e.clientY - oy));
+    panel.style.left = x + 'px';
+    panel.style.top  = y + 'px';
+  });
+
+  drag.addEventListener('pointerup', () => { dragging = false; });
+  drag.addEventListener('lostpointercapture', () => { dragging = false; });
+}
+
 // Beat map persistence
 class MapStore {
   constructor() { this.dbName = 'loop_maps'; this.storeName = 'maps'; this.db = null; }
@@ -725,8 +810,8 @@ ROOTS.forEach(r => { const o = document.createElement('option'); o.value=r; o.te
 Object.keys(SCALES).forEach(s => { const o = document.createElement('option'); o.value=s; o.textContent=SCALE_DISPLAY[s]||s; seqScale.appendChild(o); });
 seqRoot.value = synth.root;
 seqScale.value = synth.scale;
-seqRoot.addEventListener('change', () => { synth.root = seqRoot.value; synth.generatePatterns(); buildSequencer(); });
-seqScale.addEventListener('change', () => { synth.scale = seqScale.value; synth.generatePatterns(); buildSequencer(); });
+seqRoot.addEventListener('change', () => { synth.root = seqRoot.value; synth._rebuildSequence(); buildSequencer(); });
+seqScale.addEventListener('change', () => { synth.scale = seqScale.value; synth._rebuildSequence(); buildSequencer(); });
 
 /* ── genre preset buttons ── */
 const genreBar = $('genre-presets');
@@ -1812,6 +1897,97 @@ $('save-map').addEventListener('click', async () => {
   setTimeout(() => { if (status.textContent.includes('Saved')) status.textContent = ''; }, 2500);
 });
 
+/* ══════════════════ WAV EXPORT ══════════════════ */
+
+$('export-wav').addEventListener('click', async () => {
+  await synth.init();
+  const exportBtn = $('export-wav');
+  if (exportBtn.dataset.recording) return;
+
+  // calculate loop duration
+  const barSec = (60 / synth.bpm) * 4;
+  const totalBars = (synth.songMode && synth.arrangement.length) ? synth.arrangement.length : synth.loopLength;
+  const loopSec = barSec * totalBars;
+
+  // set up recorder on master output
+  const recorder = new Tone.Recorder();
+  synth.masterGain.connect(recorder);
+
+  // ensure transport is playing
+  const wasPlaying = synth.isPlaying;
+  if (!wasPlaying) {
+    synth.start();
+    playBtn.innerHTML = '&#9632; STOP';
+  }
+
+  exportBtn.dataset.recording = '1';
+  exportBtn.textContent = 'REC...';
+  exportBtn.style.color = '#ff4444';
+  status.textContent = `Recording ${loopSec.toFixed(1)}s loop...`;
+
+  recorder.start();
+
+  await new Promise(r => setTimeout(r, loopSec * 1000 + 200));
+
+  const webmBlob = await recorder.stop();
+  synth.masterGain.disconnect(recorder);
+  recorder.dispose();
+
+  // stop if we started it
+  if (!wasPlaying) {
+    synth.stop();
+    playBtn.innerHTML = '&#9654; PLAY';
+  }
+
+  // decode webm → AudioBuffer → WAV
+  status.textContent = 'Encoding WAV...';
+  try {
+    const ctx = new AudioContext();
+    const arrayBuf = await webmBlob.arrayBuffer();
+    const audioBuf = await ctx.decodeAudioData(arrayBuf);
+    ctx.close();
+
+    // encode to 16-bit PCM WAV
+    const sr = audioBuf.sampleRate, ch = audioBuf.numberOfChannels, len = audioBuf.length;
+    const dataSize = len * ch * 2;
+    const ab = new ArrayBuffer(44 + dataSize);
+    const v = new DataView(ab);
+    const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    w(0,'RIFF'); v.setUint32(4, 36 + dataSize, true); w(8,'WAVE');
+    w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true);
+    v.setUint16(22, ch, true); v.setUint32(24, sr, true);
+    v.setUint32(28, sr * ch * 2, true); v.setUint16(32, ch * 2, true);
+    v.setUint16(34, 16, true); w(36,'data'); v.setUint32(40, dataSize, true);
+    const chData = [];
+    for (let c = 0; c < ch; c++) chData.push(audioBuf.getChannelData(c));
+    let off = 44;
+    for (let i = 0; i < len; i++) {
+      for (let c = 0; c < ch; c++) {
+        const s = Math.max(-1, Math.min(1, chData[c][i]));
+        v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        off += 2;
+      }
+    }
+    const wavBlob = new Blob([ab], { type: 'audio/wav' });
+
+    // trigger download
+    const url = URL.createObjectURL(wavBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `loop_${synth.root}_${synth.scale}_${synth.bpm}bpm.wav`;
+    a.click();
+    URL.revokeObjectURL(url);
+    status.textContent = `Exported ${loopSec.toFixed(1)}s WAV`;
+  } catch (e) {
+    status.textContent = 'Export failed: ' + e.message;
+  }
+
+  exportBtn.textContent = 'WAV';
+  exportBtn.style.color = '';
+  delete exportBtn.dataset.recording;
+  setTimeout(() => { if (status.textContent.includes('Exported') || status.textContent.includes('failed')) status.textContent = ''; }, 3500);
+});
+
 /* ══════════════════ SONG ARRANGER ══════════════════ */
 
 const arrTrack = $('arr-track');
@@ -2319,9 +2495,20 @@ function rebuildLibrary() {
 })();
 
 /* ══════════════════ LORA STUDIO ══════════════════ */
+/* ══════════════════ COLLAPSIBLE SECTIONS ══════════════════ */
+document.querySelectorAll('.collapse-header[data-collapse]').forEach(header => {
+  header.addEventListener('click', () => {
+    const bodyId = header.dataset.collapse;
+    const body = document.getElementById(bodyId);
+    const arrow = header.querySelector('.collapse-arrow');
+    if (body) body.classList.toggle('open');
+    if (arrow) arrow.classList.toggle('open');
+  });
+});
+
 const LORA_API = '/ace-api/v1/lora';
 
-// Collapsible toggle
+// LoRA collapsible toggle (has extra logic to refresh status on open)
 document.getElementById('lora-toggle').addEventListener('click', () => {
   const body = document.getElementById('lora-body');
   const arrow = document.getElementById('lora-arrow');
