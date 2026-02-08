@@ -400,6 +400,7 @@ input[type=range]::-moz-range-thumb {
         <button class="btn" id="clear-bar" style="font-size:9px;">CLR</button>
         <button class="btn" id="save-map" style="font-size:9px;">SAVE</button>
         <button class="btn" id="export-wav" style="font-size:9px;">WAV</button>
+        <button class="btn" id="cover-from-loop" style="font-size:9px;">COVER</button>
       </div>
       <div id="genre-presets" style="display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;"></div>
       <div id="seq-styles" style="display:flex; flex-wrap:wrap; gap:3px; margin:2px 0; align-items:center;"></div>
@@ -515,6 +516,68 @@ input[type=range]::-moz-range-thumb {
         <button class="btn" id="open-library" style="font-size:8px; padding:1px 6px; margin-left:auto;">LIBRARY</button>
       </div>
       <div id="sample-bank" class="sample-bank"></div>
+    </div>
+  </div>
+
+  <!-- audio tools -->
+  <div class="collapse-section">
+    <div class="collapse-header" data-collapse="at-body" style="margin-top:4px;">
+      <span class="collapse-arrow">&#9654;</span>
+      <span class="section-title" style="margin:0;">AUDIO TOOLS</span>
+    </div>
+    <div class="collapse-body" id="at-body">
+      <!-- task type buttons -->
+      <div style="display:flex; flex-wrap:wrap; gap:3px; margin:4px 0;">
+        <button class="btn active at-task-btn" data-task="text2music" style="font-size:8px; padding:2px 6px;">TEXT</button>
+        <button class="btn at-task-btn" data-task="cover" style="font-size:8px; padding:2px 6px;">COVER</button>
+        <button class="btn at-task-btn" data-task="repaint" style="font-size:8px; padding:2px 6px;">REPAINT</button>
+        <button class="btn at-task-btn" data-task="lego" style="font-size:8px; padding:2px 6px;">LEGO</button>
+        <button class="btn at-task-btn" data-task="extract" style="font-size:8px; padding:2px 6px;">EXTRACT</button>
+        <button class="btn at-task-btn" data-task="complete" style="font-size:8px; padding:2px 6px;">COMPLETE</button>
+      </div>
+
+      <!-- source audio -->
+      <div style="display:flex; align-items:center; gap:4px; margin:3px 0; flex-wrap:wrap;">
+        <label style="font-size:9px; color:#8070a0; width:32px;">SRC</label>
+        <button class="btn" id="at-src-upload" style="font-size:8px; padding:1px 6px;">UPLOAD</button>
+        <select id="at-src-bank" style="font-size:8px; background:#1a1230; color:#c0b0e0; border:1px solid #302050; border-radius:3px; padding:1px 4px; max-width:120px;">
+          <option value="">FROM BANK...</option>
+        </select>
+        <button class="btn" id="at-src-loop" style="font-size:8px; padding:1px 6px;">USE LOOP</button>
+        <span id="at-src-name" style="font-size:8px; color:#a080d0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:150px;"></span>
+        <button class="btn" id="at-src-clear" style="font-size:8px; padding:1px 4px; display:none;" title="Clear source">X</button>
+      </div>
+      <input type="file" id="at-src-file" accept="audio/*" style="display:none;">
+
+      <!-- reference audio -->
+      <div style="display:flex; align-items:center; gap:4px; margin:3px 0; flex-wrap:wrap;">
+        <label style="font-size:9px; color:#8070a0; width:32px;">REF</label>
+        <button class="btn" id="at-ref-upload" style="font-size:8px; padding:1px 6px;">UPLOAD</button>
+        <select id="at-ref-bank" style="font-size:8px; background:#1a1230; color:#c0b0e0; border:1px solid #302050; border-radius:3px; padding:1px 4px; max-width:120px;">
+          <option value="">FROM BANK...</option>
+        </select>
+        <span id="at-ref-name" style="font-size:8px; color:#a080d0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:150px;"></span>
+        <button class="btn" id="at-ref-clear" style="font-size:8px; padding:1px 4px; display:none;" title="Clear reference">X</button>
+      </div>
+      <input type="file" id="at-ref-file" accept="audio/*" style="display:none;">
+
+      <!-- cover strength (visible for cover or when ref present) -->
+      <div id="at-cover-row" style="display:none; align-items:center; gap:6px; margin:3px 0;">
+        <label style="font-size:9px; color:#8070a0; width:52px;">STRENGTH</label>
+        <input type="range" id="at-cover-strength" min="0" max="1" value="1" step="0.05" style="flex:1;">
+        <span class="val" id="at-cover-val" style="width:30px;">1.00</span>
+      </div>
+
+      <!-- repaint region (visible for repaint/lego) -->
+      <div id="at-repaint-row" style="display:none; align-items:center; gap:6px; margin:3px 0;">
+        <label style="font-size:9px; color:#8070a0; width:52px;">REGION</label>
+        <input type="number" id="at-repaint-start" min="0" value="0" step="0.1" placeholder="start (s)" style="width:60px; padding:2px 4px; border-radius:3px; border:1px solid rgba(180,0,255,0.3); background:rgba(20,0,40,0.6); color:#d0b0ff; font-family:inherit; font-size:9px;">
+        <span style="font-size:9px; color:#8070a0;">to</span>
+        <input type="number" id="at-repaint-end" min="0" value="" step="0.1" placeholder="end (s)" style="width:60px; padding:2px 4px; border-radius:3px; border:1px solid rgba(180,0,255,0.3); background:rgba(20,0,40,0.6); color:#d0b0ff; font-family:inherit; font-size:9px;">
+        <span style="font-size:8px; color:#606080;">seconds</span>
+      </div>
+
+      <div style="font-size:8px; color:#504070; margin:3px 0;">Prompt, duration, quality, and seed from SAMPLE GENERATOR above.</div>
     </div>
   </div>
 
@@ -1438,8 +1501,15 @@ async function generateAceSample(prompt) {
       keyscale: synth.root + ' ' + (SCALE_DISPLAY[synth.scale] || 'Minor'),
       seed: seedVal >= 0 ? seedVal : undefined,
       lmTemperature: +aceLmTemp.value,
+      taskType: audioToolsTaskType,
+      srcAudioBlob: audioToolsSrcBlob,
+      referenceAudioBlob: audioToolsRefBlob,
+      audioCoverStrength: +($('at-cover-strength')?.value || 1),
+      repaintingStart: +($('at-repaint-start')?.value || 0),
+      repaintingEnd: $('at-repaint-end')?.value ? +$('at-repaint-end').value : null,
     });
     rebuildSampleBank();
+    refreshAtBankDropdowns();
     status.textContent = 'Sample generated!';
   } catch (e) {
     status.textContent = 'ACE-Step error: ' + e.message;
@@ -1468,7 +1538,9 @@ function openPromptPreview() {
   }
   const keyscale = synth.root + ' ' + (SCALE_DISPLAY[synth.scale] || 'Minor');
   const seedDisp = +aceSeed.value >= 0 ? aceSeed.value : 'random';
-  $('prompt-modal-info').textContent = `Duration: ${aceDur.value}s | Steps: ${aceSteps.value} | Temp: ${aceLmTemp.value} | BPM: ${synth.bpm} | Key: ${keyscale} | Seed: ${seedDisp}`;
+  const taskDisp = audioToolsTaskType !== 'text2music' ? ` | Task: ${audioToolsTaskType.toUpperCase()}` : '';
+  const srcDisp = audioToolsSrcName ? ` | Src: ${audioToolsSrcName}` : '';
+  $('prompt-modal-info').textContent = `Duration: ${aceDur.value}s | Steps: ${aceSteps.value} | Temp: ${aceLmTemp.value} | BPM: ${synth.bpm} | Key: ${keyscale} | Seed: ${seedDisp}${taskDisp}${srcDisp}`;
   $('prompt-modal').style.display = '';
   $('prompt-modal-text').focus();
 }
@@ -1516,6 +1588,7 @@ async function assignToSlot(sampleIndex, slot) {
 // build sample bank UI
 function rebuildSampleBank() {
   sampleBankEl.innerHTML = '';
+  if (typeof refreshAtBankDropdowns === 'function') refreshAtBankDropdowns();
   sbank.samples.forEach((sample, idx) => {
     const item = document.createElement('div');
     item.className = 'sample-item';
@@ -1897,87 +1970,87 @@ $('save-map').addEventListener('click', async () => {
   setTimeout(() => { if (status.textContent.includes('Saved')) status.textContent = ''; }, 2500);
 });
 
-/* ══════════════════ WAV EXPORT ══════════════════ */
+/* ══════════════════ WAV ENCODER + LOOP RECORDER ══════════════════ */
 
-$('export-wav').addEventListener('click', async () => {
+function encodeAudioBufferToWav(audioBuf) {
+  const sr = audioBuf.sampleRate, ch = audioBuf.numberOfChannels, len = audioBuf.length;
+  const dataSize = len * ch * 2;
+  const ab = new ArrayBuffer(44 + dataSize);
+  const v = new DataView(ab);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0,'RIFF'); v.setUint32(4, 36 + dataSize, true); w(8,'WAVE');
+  w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true);
+  v.setUint16(22, ch, true); v.setUint32(24, sr, true);
+  v.setUint32(28, sr * ch * 2, true); v.setUint16(32, ch * 2, true);
+  v.setUint16(34, 16, true); w(36,'data'); v.setUint32(40, dataSize, true);
+  const chData = [];
+  for (let c = 0; c < ch; c++) chData.push(audioBuf.getChannelData(c));
+  let off = 44;
+  for (let i = 0; i < len; i++) {
+    for (let c = 0; c < ch; c++) {
+      const s = Math.max(-1, Math.min(1, chData[c][i]));
+      v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      off += 2;
+    }
+  }
+  return new Blob([ab], { type: 'audio/wav' });
+}
+
+async function recordLoop() {
   await synth.init();
-  const exportBtn = $('export-wav');
-  if (exportBtn.dataset.recording) return;
-
-  // calculate loop duration
   const barSec = (60 / synth.bpm) * 4;
   const totalBars = (synth.songMode && synth.arrangement.length) ? synth.arrangement.length : synth.loopLength;
   const loopSec = barSec * totalBars;
 
-  // set up recorder on master output
   const recorder = new Tone.Recorder();
   synth.masterGain.connect(recorder);
 
-  // ensure transport is playing
   const wasPlaying = synth.isPlaying;
   if (!wasPlaying) {
     synth.start();
     playBtn.innerHTML = '&#9632; STOP';
   }
 
-  exportBtn.dataset.recording = '1';
-  exportBtn.textContent = 'REC...';
-  exportBtn.style.color = '#ff4444';
-  status.textContent = `Recording ${loopSec.toFixed(1)}s loop...`;
-
   recorder.start();
-
   await new Promise(r => setTimeout(r, loopSec * 1000 + 200));
 
   const webmBlob = await recorder.stop();
   synth.masterGain.disconnect(recorder);
   recorder.dispose();
 
-  // stop if we started it
   if (!wasPlaying) {
     synth.stop();
     playBtn.innerHTML = '&#9654; PLAY';
   }
 
-  // decode webm → AudioBuffer → WAV
-  status.textContent = 'Encoding WAV...';
+  const ctx = new AudioContext();
+  const arrayBuf = await webmBlob.arrayBuffer();
+  const audioBuf = await ctx.decodeAudioData(arrayBuf);
+  ctx.close();
+
+  return { wavBlob: encodeAudioBufferToWav(audioBuf), durationSec: loopSec };
+}
+
+/* ══════════════════ WAV EXPORT ══════════════════ */
+
+$('export-wav').addEventListener('click', async () => {
+  const exportBtn = $('export-wav');
+  if (exportBtn.dataset.recording) return;
+
+  exportBtn.dataset.recording = '1';
+  exportBtn.textContent = 'REC...';
+  exportBtn.style.color = '#ff4444';
+  status.textContent = 'Recording loop...';
+
   try {
-    const ctx = new AudioContext();
-    const arrayBuf = await webmBlob.arrayBuffer();
-    const audioBuf = await ctx.decodeAudioData(arrayBuf);
-    ctx.close();
-
-    // encode to 16-bit PCM WAV
-    const sr = audioBuf.sampleRate, ch = audioBuf.numberOfChannels, len = audioBuf.length;
-    const dataSize = len * ch * 2;
-    const ab = new ArrayBuffer(44 + dataSize);
-    const v = new DataView(ab);
-    const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-    w(0,'RIFF'); v.setUint32(4, 36 + dataSize, true); w(8,'WAVE');
-    w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true);
-    v.setUint16(22, ch, true); v.setUint32(24, sr, true);
-    v.setUint32(28, sr * ch * 2, true); v.setUint16(32, ch * 2, true);
-    v.setUint16(34, 16, true); w(36,'data'); v.setUint32(40, dataSize, true);
-    const chData = [];
-    for (let c = 0; c < ch; c++) chData.push(audioBuf.getChannelData(c));
-    let off = 44;
-    for (let i = 0; i < len; i++) {
-      for (let c = 0; c < ch; c++) {
-        const s = Math.max(-1, Math.min(1, chData[c][i]));
-        v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-        off += 2;
-      }
-    }
-    const wavBlob = new Blob([ab], { type: 'audio/wav' });
-
-    // trigger download
+    const { wavBlob, durationSec } = await recordLoop();
     const url = URL.createObjectURL(wavBlob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `loop_${synth.root}_${synth.scale}_${synth.bpm}bpm.wav`;
     a.click();
     URL.revokeObjectURL(url);
-    status.textContent = `Exported ${loopSec.toFixed(1)}s WAV`;
+    status.textContent = `Exported ${durationSec.toFixed(1)}s WAV`;
   } catch (e) {
     status.textContent = 'Export failed: ' + e.message;
   }
@@ -1986,6 +2059,188 @@ $('export-wav').addEventListener('click', async () => {
   exportBtn.style.color = '';
   delete exportBtn.dataset.recording;
   setTimeout(() => { if (status.textContent.includes('Exported') || status.textContent.includes('failed')) status.textContent = ''; }, 3500);
+});
+
+/* ══════════════════ AUDIO TOOLS ══════════════════ */
+
+let audioToolsSrcBlob = null;
+let audioToolsSrcName = '';
+let audioToolsRefBlob = null;
+let audioToolsRefName = '';
+let audioToolsTaskType = 'text2music';
+
+// task type buttons
+document.querySelectorAll('.at-task-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.at-task-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    audioToolsTaskType = btn.dataset.task;
+    // show/hide cover strength
+    const coverRow = $('at-cover-row');
+    coverRow.style.display = (audioToolsTaskType === 'cover' || audioToolsRefBlob) ? 'flex' : 'none';
+    // show/hide repaint region
+    const repaintRow = $('at-repaint-row');
+    repaintRow.style.display = (audioToolsTaskType === 'repaint' || audioToolsTaskType === 'lego') ? 'flex' : 'none';
+  });
+});
+
+// cover strength slider
+$('at-cover-strength').addEventListener('input', () => {
+  $('at-cover-val').textContent = (+$('at-cover-strength').value).toFixed(2);
+});
+
+// helper: update source display
+function updateAtSrcDisplay() {
+  $('at-src-name').textContent = audioToolsSrcName;
+  $('at-src-clear').style.display = audioToolsSrcBlob ? '' : 'none';
+}
+
+// helper: update ref display
+function updateAtRefDisplay() {
+  $('at-ref-name').textContent = audioToolsRefName;
+  $('at-ref-clear').style.display = audioToolsRefBlob ? '' : 'none';
+  // show cover strength if ref is loaded
+  if (audioToolsRefBlob || audioToolsTaskType === 'cover') {
+    $('at-cover-row').style.display = 'flex';
+  }
+}
+
+// helper: refresh bank dropdowns
+function refreshAtBankDropdowns() {
+  [$('at-src-bank'), $('at-ref-bank')].forEach(sel => {
+    const val = sel.value;
+    sel.innerHTML = '<option value="">FROM BANK...</option>';
+    sbank.samples.forEach((s, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = s.name.slice(0, 30);
+      sel.appendChild(opt);
+    });
+    sel.value = val;
+  });
+}
+
+// source upload
+$('at-src-upload').addEventListener('click', () => $('at-src-file').click());
+$('at-src-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  audioToolsSrcBlob = file;
+  audioToolsSrcName = file.name;
+  updateAtSrcDisplay();
+  e.target.value = '';
+});
+
+// source from bank
+$('at-src-bank').addEventListener('change', () => {
+  const idx = $('at-src-bank').value;
+  if (idx === '') return;
+  const sample = sbank.getSample(+idx);
+  if (sample) {
+    audioToolsSrcBlob = sample.audioBlob;
+    audioToolsSrcName = sample.name;
+    updateAtSrcDisplay();
+  }
+  $('at-src-bank').value = '';
+});
+
+// source from loop
+$('at-src-loop').addEventListener('click', async () => {
+  const loopBtn = $('at-src-loop');
+  if (loopBtn.dataset.recording) return;
+  loopBtn.dataset.recording = '1';
+  loopBtn.textContent = 'REC...';
+  loopBtn.style.color = '#ff4444';
+  status.textContent = 'Recording loop for source audio...';
+  try {
+    const { wavBlob, durationSec } = await recordLoop();
+    audioToolsSrcBlob = wavBlob;
+    audioToolsSrcName = `loop_${synth.bpm}bpm_${durationSec.toFixed(1)}s.wav`;
+    updateAtSrcDisplay();
+    status.textContent = `Loop captured (${durationSec.toFixed(1)}s)`;
+  } catch (e) {
+    status.textContent = 'Loop capture failed: ' + e.message;
+  }
+  loopBtn.textContent = 'USE LOOP';
+  loopBtn.style.color = '';
+  delete loopBtn.dataset.recording;
+});
+
+// source clear
+$('at-src-clear').addEventListener('click', () => {
+  audioToolsSrcBlob = null;
+  audioToolsSrcName = '';
+  updateAtSrcDisplay();
+});
+
+// reference upload
+$('at-ref-upload').addEventListener('click', () => $('at-ref-file').click());
+$('at-ref-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  audioToolsRefBlob = file;
+  audioToolsRefName = file.name;
+  updateAtRefDisplay();
+  e.target.value = '';
+});
+
+// reference from bank
+$('at-ref-bank').addEventListener('change', () => {
+  const idx = $('at-ref-bank').value;
+  if (idx === '') return;
+  const sample = sbank.getSample(+idx);
+  if (sample) {
+    audioToolsRefBlob = sample.audioBlob;
+    audioToolsRefName = sample.name;
+    updateAtRefDisplay();
+  }
+  $('at-ref-bank').value = '';
+});
+
+// reference clear
+$('at-ref-clear').addEventListener('click', () => {
+  audioToolsRefBlob = null;
+  audioToolsRefName = '';
+  updateAtRefDisplay();
+  if (audioToolsTaskType !== 'cover') $('at-cover-row').style.display = 'none';
+});
+
+/* ══════════════════ COVER FROM LOOP SHORTCUT ══════════════════ */
+
+$('cover-from-loop').addEventListener('click', async () => {
+  const coverBtn = $('cover-from-loop');
+  if (coverBtn.dataset.recording) return;
+  coverBtn.dataset.recording = '1';
+  coverBtn.textContent = 'REC...';
+  coverBtn.style.color = '#ff4444';
+  status.textContent = 'Recording loop for cover...';
+  try {
+    const { wavBlob, durationSec } = await recordLoop();
+    audioToolsSrcBlob = wavBlob;
+    audioToolsSrcName = `loop_${synth.bpm}bpm_${durationSec.toFixed(1)}s.wav`;
+    // switch task type to cover
+    audioToolsTaskType = 'cover';
+    document.querySelectorAll('.at-task-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.at-task-btn[data-task="cover"]')?.classList.add('active');
+    $('at-cover-row').style.display = 'flex';
+    $('at-repaint-row').style.display = 'none';
+    updateAtSrcDisplay();
+    // expand audio tools if collapsed
+    const atBody = $('at-body');
+    if (!atBody.classList.contains('open')) {
+      atBody.classList.add('open');
+      const arrow = atBody.previousElementSibling?.querySelector('.collapse-arrow');
+      if (arrow) arrow.classList.add('open');
+    }
+    // open prompt preview so user can review before sending
+    status.textContent = `Loop captured (${durationSec.toFixed(1)}s) — review prompt and send`;
+    openPromptPreview();
+  } catch (e) {
+    status.textContent = 'Cover capture failed: ' + e.message;
+  }
+  coverBtn.textContent = 'COVER';
+  coverBtn.style.color = '';
+  delete coverBtn.dataset.recording;
 });
 
 /* ══════════════════ SONG ARRANGER ══════════════════ */

@@ -96,35 +96,70 @@ export class SampleBank {
    * Generate an audio sample via ACE-Step.
    * Returns { id, name, prompt, duration, audioBlob, ts }
    */
-  async generateSample({ prompt = '', lyrics = '', duration = 10, instrumental = true, inferenceSteps = 8, guidanceScale = 1, bpm = null, keyscale = '', seed, lmTemperature = 0.85 }) {
+  async generateSample({ prompt = '', lyrics = '', duration = 10, instrumental = true, inferenceSteps = 8, guidanceScale = 1, bpm = null, keyscale = '', seed, lmTemperature = 0.85, taskType = 'text2music', srcAudioBlob = null, referenceAudioBlob = null, audioCoverStrength = 1.0, repaintingStart = 0, repaintingEnd = null }) {
     if (this.busy) throw new Error('Generation already in progress');
     this.busy = true;
 
     try {
       this._emit('Submitting to ACE-Step...');
 
-      const taskRes = await fetch(`${this.apiBase}/release_task`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt,
-          lyrics: lyrics || '[Instrumental]',
-          audio_duration: Math.max(10, duration),
-          instrumental,
-          thinking: true,
-          use_cot_caption: true,   // LM rewrites/enhances the prompt
-          use_cot_metas: true,     // LM fills missing metadata (BPM, key, time sig)
-          use_cot_language: true,  // LM detects vocal language
-          ...(bpm ? { bpm } : {}),
-          ...(keyscale ? { keyscale } : {}),
-          ...(seed != null ? { seed } : {}),
-          lm_temperature: lmTemperature,
-          batch_size: 1,
-          inference_steps: inferenceSteps,
-          guidance_scale: guidanceScale,
-          audio_format: 'wav',
-        }),
-      });
+      const hasFiles = srcAudioBlob || referenceAudioBlob;
+      let taskRes;
+
+      if (hasFiles) {
+        // FormData path for file uploads (cover, repaint, lego, extract, complete)
+        const fd = new FormData();
+        fd.append('prompt', prompt);
+        fd.append('lyrics', lyrics || '[Instrumental]');
+        fd.append('audio_duration', String(Math.max(10, duration)));
+        fd.append('task_type', taskType);
+        fd.append('instrumental', String(instrumental));
+        fd.append('thinking', 'true');
+        fd.append('use_cot_caption', 'true');
+        fd.append('use_cot_metas', 'true');
+        fd.append('use_cot_language', 'true');
+        if (bpm) fd.append('bpm', String(bpm));
+        if (keyscale) fd.append('keyscale', keyscale);
+        if (seed != null) fd.append('seed', String(seed));
+        fd.append('lm_temperature', String(lmTemperature));
+        fd.append('batch_size', '1');
+        fd.append('inference_steps', String(inferenceSteps));
+        fd.append('guidance_scale', String(guidanceScale));
+        fd.append('audio_format', 'wav');
+        if (srcAudioBlob) fd.append('src_audio', srcAudioBlob, 'source.wav');
+        if (referenceAudioBlob) fd.append('ref_audio', referenceAudioBlob, 'reference.wav');
+        if (taskType === 'cover') fd.append('audio_cover_strength', String(audioCoverStrength));
+        if (repaintingEnd != null) {
+          fd.append('repainting_start', String(repaintingStart));
+          fd.append('repainting_end', String(repaintingEnd));
+        }
+        taskRes = await fetch(`${this.apiBase}/release_task`, { method: 'POST', body: fd });
+      } else {
+        // JSON path for text2music (no files)
+        taskRes = await fetch(`${this.apiBase}/release_task`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt,
+            lyrics: lyrics || '[Instrumental]',
+            audio_duration: Math.max(10, duration),
+            task_type: taskType,
+            instrumental,
+            thinking: true,
+            use_cot_caption: true,
+            use_cot_metas: true,
+            use_cot_language: true,
+            ...(bpm ? { bpm } : {}),
+            ...(keyscale ? { keyscale } : {}),
+            ...(seed != null ? { seed } : {}),
+            lm_temperature: lmTemperature,
+            batch_size: 1,
+            inference_steps: inferenceSteps,
+            guidance_scale: guidanceScale,
+            audio_format: 'wav',
+          }),
+        });
+      }
 
       if (!taskRes.ok) {
         const err = await taskRes.json().catch(() => ({}));

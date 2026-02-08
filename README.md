@@ -14,6 +14,7 @@ Browser-based music production environment with reactive 3D visuals, AI-powered 
 - **8 Genre Presets** — House, Techno, Psytrance, D&B, Hip-Hop, Ambient, Rock, Pop — each configures BPM range, scale preferences, and per-instrument style pools
 - **Randomize** — One-click full pattern regeneration with new key, scale, and styles
 - **Genre Randomize** — Click a genre preset to generate genre-appropriate patterns with correct BPM, scales, and instrument styles
+- **WAV Export** — Record the current loop/arrangement and download as 16-bit PCM WAV
 
 ### Sound Design
 - **Master Controls** — Intensity, filter cutoff (60Hz-20kHz), swing, distortion
@@ -32,8 +33,17 @@ Browser-based music production environment with reactive 3D visuals, AI-powered 
 - **Block Management** — Add, copy, remove blocks; visual position tracking during playback
 
 ### AI Audio Generation (ACE-Step 1.5)
+- **6 Task Types** — Text-to-music, cover, repaint, lego, extract, and complete modes
 - **Text-to-Music** — Generate audio clips up to 240 seconds from text prompts
-- **Prompt Preview** — Review and edit the full prompt before sending to ACE-Step
+- **Cover** — Regenerate audio conditioned on a source file, controlling faithfulness via strength slider (0-1)
+- **Repaint** — Inpaint a region of an audio file (specify start/end in seconds) while preserving the rest
+- **Lego** — Remix specific tracks within an audio file (e.g. replace just the drums)
+- **Extract** — Isolate a single track/stem from a mixed audio file
+- **Complete** — Continue or extend an existing audio file
+- **Source Audio** — Upload files, pick from the sample bank, or record the live sequencer loop
+- **Reference Audio** — Optionally provide a style reference to influence any generation
+- **One-Click Cover** — COVER button in sequencer records the current loop and opens prompt preview in cover mode
+- **Prompt Preview** — Review and edit the full prompt before sending to ACE-Step; shows active task type and source info
 - **Generation Controls** — Duration, inference steps (4/8/16/32), guidance scale, seed, LM temperature
 - **Prompt Engineering** — Auto-generates structure tags ([Intro], [Build], [Drop], [Breakdown], [Outro]) based on duration
 - **Key/Scale Sync** — Auto-passes current BPM, root note, and scale to the generation model as metadata
@@ -282,7 +292,7 @@ Browser (localhost:8080)
 ├── synth.js        — Tone.js audio engine, pattern generation, arrangement
 ├── visualizer.js   — Three.js 3D scene, shaders, post-processing
 ├── api.js          — Google Gemini texture API, IndexedDB for textures
-└── samples.js      — IndexedDB for samples, blob management
+└── samples.js      — ACE-Step client, audio conditioning, IndexedDB for samples
 
 server.py (Python, port 8080)
 ├── Static file server
@@ -291,6 +301,7 @@ server.py (Python, port 8080)
 
 ACE-Step 1.5 (port 8001)
 ├── Music generation (DiT + VAE + 5Hz LM)
+├── 6 task types (text2music, cover, repaint, lego, extract, complete)
 ├── LoRA training pipeline
 └── 10 LoRA REST endpoints
 
