@@ -362,10 +362,14 @@ input[type=range]::-moz-range-thumb {
   <div class="divider"></div>
   <div class="seq-header">
     <span>STEP SEQUENCER</span>
+    <select id="seq-root" style="font-size:9px; background:#1a1230; color:#c0b0e0; border:1px solid #302050; border-radius:3px; padding:1px 2px;"></select>
+    <select id="seq-scale" style="font-size:9px; background:#1a1230; color:#c0b0e0; border:1px solid #302050; border-radius:3px; padding:1px 2px;"></select>
     <div class="bar-tabs" id="bar-tabs"></div>
     <button class="btn" id="clear-bar" style="font-size:9px;">CLR</button>
     <button class="btn" id="save-map" style="font-size:9px;">SAVE</button>
   </div>
+  <div id="genre-presets" style="display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;"></div>
+  <div id="seq-styles" style="display:flex; flex-wrap:wrap; gap:3px; margin:2px 0; align-items:center;"></div>
   <div id="seq-nums" class="seq-nums"></div>
   <div id="sequencer"></div>
 
@@ -625,9 +629,10 @@ input[type=range]::-moz-range-thumb {
 
 <!-- ══════════════════ MAIN MODULE ══════════════════ -->
 <script type="module">
-import { LoopSynth, SEQ_INSTRUMENTS, SEQ_LABELS, SEQ_COLORS, SAMPLE_SLOTS } from './synth.js';
+import { LoopSynth, SEQ_INSTRUMENTS, SEQ_LABELS, SEQ_COLORS, SAMPLE_SLOTS, SCALES, ROOTS, BASS_STYLES, LEAD_STYLES, HAT_STYLES, KICK_STYLES, CLAP_STYLES, PERC_STYLES, STAB_STYLES, GENRE_PRESETS } from './synth.js';
 
 const SLOT_COLORS = ['#ff8800','#88ff00','#0088ff','#ff0088'];
+const SCALE_DISPLAY = { major:'Major', minor:'Minor', dorian:'Dorian', phrygian:'Phrygian', lydian:'Lydian', mixolydian:'Mixolydian', harmonicMinor:'Harmonic Minor', hungarianMin:'Hungarian Minor', locrian:'Locrian', pentatonicMaj:'Pentatonic Maj', pentatonicMin:'Pentatonic Min', blues:'Blues', wholeTone:'Whole Tone', chromatic:'Chromatic' };
 import { ReactiveVisualizer } from './visualizer.js';
 import { ImagenAPI } from './api.js';
 import { SampleBank } from './samples.js';
@@ -714,6 +719,66 @@ let seqBar  = 0;           // which bar the sequencer is showing
 let seqStepEls = [];        // flat array of step DOM elements for fast update
 let prevHighlight = -1;
 
+/* ── root / scale / style controls ── */
+const seqRoot = $('seq-root'), seqScale = $('seq-scale');
+ROOTS.forEach(r => { const o = document.createElement('option'); o.value=r; o.textContent=r; seqRoot.appendChild(o); });
+Object.keys(SCALES).forEach(s => { const o = document.createElement('option'); o.value=s; o.textContent=SCALE_DISPLAY[s]||s; seqScale.appendChild(o); });
+seqRoot.value = synth.root;
+seqScale.value = synth.scale;
+seqRoot.addEventListener('change', () => { synth.root = seqRoot.value; synth.generatePatterns(); buildSequencer(); });
+seqScale.addEventListener('change', () => { synth.scale = seqScale.value; synth.generatePatterns(); buildSequencer(); });
+
+/* ── genre preset buttons ── */
+const genreBar = $('genre-presets');
+Object.keys(GENRE_PRESETS).forEach(g => {
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  btn.style.cssText = 'font-size:8px; padding:1px 5px;';
+  btn.textContent = g.toUpperCase();
+  btn.addEventListener('click', async () => {
+    await synth.init();
+    const r = synth.randomizeGenre(g);
+    $('bpm').value = synth.bpm; $('bpm-val').textContent = synth.bpm;
+    seqRoot.value = synth.root; seqScale.value = synth.scale;
+    updateStyleSelects();
+    buildSequencer();
+    status.textContent = `${g}: ${r.root} ${SCALE_DISPLAY[r.scale]||r.scale} ${r.bpm}bpm`;
+    setTimeout(() => { if (status.textContent.startsWith(g)) status.textContent=''; }, 3500);
+  });
+  genreBar.appendChild(btn);
+});
+
+/* ── per-instrument style selectors ── */
+const STYLE_MAP = { kick: KICK_STYLES, bass: BASS_STYLES, hat: HAT_STYLES, lead: LEAD_STYLES, clap: CLAP_STYLES, perc: PERC_STYLES, stab: STAB_STYLES };
+const STYLE_PROP = { kick:'kickStyle', bass:'bassStyle', hat:'hatStyle', lead:'leadStyle', clap:'clapStyle', perc:'percStyle', stab:'stabStyle' };
+const styleSelects = {};
+
+function buildStyleSelects() {
+  const wrap = $('seq-styles');
+  wrap.innerHTML = '';
+  for (const inst of ['kick','bass','hat','clap','lead','perc','stab']) {
+    const sel = document.createElement('select');
+    sel.style.cssText = 'font-size:8px; background:#1a1230; color:#c0b0e0; border:1px solid #302050; border-radius:3px; padding:1px 2px;';
+    const label = inst.slice(0,3).toUpperCase();
+    STYLE_MAP[inst].forEach(s => { const o = document.createElement('option'); o.value=s; o.textContent=`${label}:${s}`; sel.appendChild(o); });
+    sel.value = synth[STYLE_PROP[inst]];
+    sel.addEventListener('change', () => {
+      synth[STYLE_PROP[inst]] = sel.value;
+      synth.generatePatterns();
+      buildSequencer();
+    });
+    styleSelects[inst] = sel;
+    wrap.appendChild(sel);
+  }
+}
+buildStyleSelects();
+
+function updateStyleSelects() {
+  for (const inst of Object.keys(styleSelects)) {
+    styleSelects[inst].value = synth[STYLE_PROP[inst]];
+  }
+}
+
 /* ── transport ── */
 playBtn.addEventListener('click', async () => {
   await synth.init();
@@ -762,8 +827,11 @@ $('clear-bar').addEventListener('click', () => {
 randBtn.addEventListener('click', async () => {
   await synth.init();
   const r = synth.randomize();
+  seqRoot.value = synth.root; seqScale.value = synth.scale;
+  $('bpm').value = synth.bpm; $('bpm-val').textContent = synth.bpm;
+  updateStyleSelects();
   buildSequencer();
-  status.textContent = `${r.root} ${r.scale} | bass:${r.bass} lead:${r.lead} hats:${r.hats}`;
+  status.textContent = `${r.root} ${SCALE_DISPLAY[r.scale]||r.scale} | kick:${r.kick} bass:${r.bass} lead:${r.lead} hats:${r.hats} clap:${r.clap}`;
   setTimeout(() => { if (status.textContent.includes(r.root)) status.textContent=''; }, 3500);
 });
 
@@ -1272,7 +1340,6 @@ $('ace-check').addEventListener('click', async () => {
 async function generateAceSample(prompt) {
   if (sbank.busy) return;
   aceGen.disabled = true;
-  const scaleMap = { minor:'Minor', phrygian:'Phrygian', harmonicMinor:'Harmonic Minor', dorian:'Dorian', locrian:'Locrian', hungarianMin:'Hungarian Minor' };
   const seedVal = +aceSeed.value;
   try {
     await sbank.generateSample({
@@ -1283,7 +1350,7 @@ async function generateAceSample(prompt) {
       inferenceSteps: +aceSteps.value,
       guidanceScale: +aceCfg.value,
       bpm: synth.bpm,
-      keyscale: synth.root + ' ' + (scaleMap[synth.scale] || 'Minor'),
+      keyscale: synth.root + ' ' + (SCALE_DISPLAY[synth.scale] || 'Minor'),
       seed: seedVal >= 0 ? seedVal : undefined,
       lmTemperature: +aceLmTemp.value,
     });
@@ -1314,9 +1381,7 @@ function openPromptPreview() {
     $('prompt-modal-lyrics').value = aceLyrics.value.trim();
     $('prompt-modal-lyrics').style.display = '';
   }
-  // map synth scale to keyscale for ACE-Step
-  const scaleToKeyscale = { minor:'Minor', phrygian:'Phrygian', harmonicMinor:'Harmonic Minor', dorian:'Dorian', locrian:'Locrian', hungarianMin:'Hungarian Minor' };
-  const keyscale = synth.root + ' ' + (scaleToKeyscale[synth.scale] || 'Minor');
+  const keyscale = synth.root + ' ' + (SCALE_DISPLAY[synth.scale] || 'Minor');
   const seedDisp = +aceSeed.value >= 0 ? aceSeed.value : 'random';
   $('prompt-modal-info').textContent = `Duration: ${aceDur.value}s | Steps: ${aceSteps.value} | Temp: ${aceLmTemp.value} | BPM: ${synth.bpm} | Key: ${keyscale} | Seed: ${seedDisp}`;
   $('prompt-modal').style.display = '';
@@ -1709,6 +1774,8 @@ function rebuildMapsList(maps) {
       synth.loadState(map.state);
       $('bpm').value = synth.bpm;
       $('bpm-val').textContent = synth.bpm;
+      seqRoot.value = synth.root; seqScale.value = synth.scale;
+      updateStyleSelects();
       document.querySelectorAll('[data-bars]').forEach(b => b.classList.toggle('active', +b.dataset.bars === synth.loopLength));
       if (seqBar >= synth.loopLength) seqBar = synth.loopLength - 1;
       buildSequencer();

@@ -2,19 +2,34 @@
 // Single master sequencer with editable step patterns
 
 const SCALES = {
-  phrygian:      [0, 1, 3, 5, 7, 8, 10],
+  major:         [0, 2, 4, 5, 7, 9, 11],
   minor:         [0, 2, 3, 5, 7, 8, 10],
-  harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
   dorian:        [0, 2, 3, 5, 7, 9, 10],
-  locrian:       [0, 1, 3, 5, 6, 8, 10],
+  phrygian:      [0, 1, 3, 5, 7, 8, 10],
+  lydian:        [0, 2, 4, 6, 7, 9, 11],
+  mixolydian:    [0, 2, 4, 5, 7, 9, 10],
+  harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
   hungarianMin:  [0, 2, 3, 6, 7, 8, 11],
+  locrian:       [0, 1, 3, 5, 6, 8, 10],
+  pentatonicMaj: [0, 2, 4, 7, 9],
+  pentatonicMin: [0, 3, 5, 7, 10],
+  blues:         [0, 3, 5, 6, 7, 10],
+  wholeTone:     [0, 2, 4, 6, 8, 10],
+  chromatic:     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
 };
 
 const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-const ROOTS      = ['A','C','D','E','F#','G','Bb','B'];
+const ROOTS      = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 
+const FLAT_TO_SHARP = { 'Bb':'A#','Db':'C#','Eb':'D#','Gb':'F#','Ab':'G#' };
 function m2n(m)  { return NOTE_NAMES[((m%12)+12)%12] + Math.floor(m/12 - 1); }
-function n2m(n)  { const p = n.match(/^([A-Gb#]+)(-?\d+)$/); return p ? (parseInt(p[2])+1)*12 + NOTE_NAMES.indexOf(p[1]) : 60; }
+function n2m(n)  {
+  const p = n.match(/^([A-Gb#]+)(-?\d+)$/);
+  if (!p) return 60;
+  const name = FLAT_TO_SHARP[p[1]] || p[1];
+  const idx = NOTE_NAMES.indexOf(name);
+  return idx >= 0 ? (parseInt(p[2])+1)*12 + idx : 60;
+}
 
 function scaleNotes(root, oct, sc, count) {
   const b = n2m(root+oct), iv = SCALES[sc], o = [];
@@ -39,6 +54,9 @@ const BASS_STYLES = ['rolling','galloping','syncopated','offbeat','pulsing'];
 const LEAD_STYLES = ['arpeggio','melody','staccato','wide'];
 const HAT_STYLES  = ['standard','sixteenths','sparse','busy'];
 const KICK_STYLES = ['four','offkick','skipbeat'];
+const CLAP_STYLES = ['backbeat','trap','breakbeat','minimal'];
+const PERC_STYLES = ['sparse','shaker','conga','rim'];
+const STAB_STYLES = ['sparse','offbeat','rhythmic','accent'];
 
 function genKick(steps, style) {
   const p = new Array(steps).fill(null);
@@ -89,12 +107,30 @@ function genHats(steps, style) {
   return p;
 }
 
-function genClap(steps) {
+function genClap(steps, style) {
   const p = new Array(steps).fill(null);
   for (let i = 0; i < steps; i++) {
     const beat = (i%16)/4;
-    if ((beat===1||beat===3)&&i%4===0) p[i]=1;
-    else if (beat===3.5&&coin(0.15)) p[i]=1;
+    const pos = i%16;
+    switch (style) {
+      case 'backbeat':
+        if ((beat===1||beat===3)&&i%4===0) p[i]=1;
+        else if (beat===3.5&&coin(0.15)) p[i]=1;
+        break;
+      case 'trap':
+        if (beat===1&&i%4===0) p[i]=1;
+        else if (beat===3&&i%4===0) p[i]=1;
+        else if (pos>=12&&coin(0.4)) p[i]=1;
+        else if ((pos===6||pos===10)&&coin(0.15)) p[i]=1;
+        break;
+      case 'breakbeat':
+        if ((pos===4||pos===10)&&coin(0.85)) p[i]=1;
+        else if ((pos===3||pos===7||pos===13)&&coin(0.25)) p[i]=1;
+        break;
+      case 'minimal':
+        if (beat===3&&i%4===0) p[i]=1;
+        break;
+    }
   }
   return p;
 }
@@ -145,27 +181,75 @@ function genLead(steps, root, sc, style) {
   return p;
 }
 
-function genPerc(steps) {
-  return Array.from({length:steps}, (_,i) => {
-    if (i%16>=14&&coin(0.4)) return 1;
-    return coin(0.08)?1:null;
-  });
+function genPerc(steps, style) {
+  const p = new Array(steps).fill(null);
+  for (let i = 0; i < steps; i++) {
+    const pos = i%16;
+    switch (style) {
+      case 'sparse':
+        if (pos>=14&&coin(0.4)) p[i]=1;
+        else if (coin(0.08)) p[i]=1;
+        break;
+      case 'shaker':
+        if (coin(0.75)) p[i]=1;
+        break;
+      case 'conga':
+        if ((pos===0||pos===3||pos===7||pos===10||pos===12)&&coin(0.8)) p[i]=1;
+        else if ((pos===5||pos===14)&&coin(0.3)) p[i]=1;
+        break;
+      case 'rim':
+        if (pos%4===2&&coin(0.8)) p[i]=1;
+        else if ((pos===1||pos===7||pos===11)&&coin(0.3)) p[i]=1;
+        break;
+    }
+  }
+  return p;
 }
 
-function genStab(steps) {
-  return Array.from({length:steps}, (_,i) => {
-    const pos=i%16;
-    if ((pos===6||pos===14)&&coin(0.6)) return 1;
-    if (pos===10&&coin(0.3)) return 1;
-    return null;
-  });
+function genStab(steps, style) {
+  const p = new Array(steps).fill(null);
+  for (let i = 0; i < steps; i++) {
+    const pos = i%16;
+    switch (style) {
+      case 'sparse':
+        if ((pos===6||pos===14)&&coin(0.6)) p[i]=1;
+        else if (pos===10&&coin(0.3)) p[i]=1;
+        break;
+      case 'offbeat':
+        if (pos%4===2&&coin(0.5)) p[i]=1;
+        else if ((pos===1||pos===5)&&coin(0.2)) p[i]=1;
+        break;
+      case 'rhythmic':
+        if (pos%4===0&&coin(0.7)) p[i]=1;
+        else if (pos%4===2&&coin(0.2)) p[i]=1;
+        break;
+      case 'accent':
+        if (pos===0&&coin(0.85)) p[i]=1;
+        else if ((pos===8||pos===12)&&coin(0.4)) p[i]=1;
+        break;
+    }
+  }
+  return p;
 }
+
+/* ═══════════════ GENRE PRESETS ═══════════════ */
+const GENRE_PRESETS = {
+  house:     { bpmRange:[120,130], scales:['minor','dorian','pentatonicMin'], kicks:['four'], bass:['pulsing','offbeat'], hats:['standard','busy'], claps:['backbeat'], percs:['shaker'], stabs:['offbeat'], leads:['melody','arpeggio'] },
+  techno:    { bpmRange:[128,140], scales:['minor','phrygian','dorian'], kicks:['four','offkick'], bass:['rolling','pulsing'], hats:['sixteenths','busy'], claps:['minimal','backbeat'], percs:['rim','sparse'], stabs:['rhythmic'], leads:['staccato','arpeggio'] },
+  psytrance: { bpmRange:[138,150], scales:['phrygian','harmonicMinor','hungarianMin'], kicks:['four'], bass:['rolling','galloping'], hats:['sixteenths','busy'], claps:['minimal'], percs:['sparse'], stabs:['sparse','accent'], leads:['arpeggio','staccato'] },
+  dnb:       { bpmRange:[170,180], scales:['minor','blues','pentatonicMin'], kicks:['skipbeat','offkick'], bass:['syncopated','rolling'], hats:['busy','standard'], claps:['breakbeat'], percs:['rim','conga'], stabs:['accent'], leads:['melody','wide'] },
+  hiphop:    { bpmRange:[85,100],  scales:['pentatonicMin','blues','minor'], kicks:['skipbeat','offkick'], bass:['syncopated','offbeat'], hats:['sparse','standard'], claps:['trap','backbeat'], percs:['conga','rim'], stabs:['sparse'], leads:['melody','wide'] },
+  ambient:   { bpmRange:[70,100],  scales:['major','lydian','pentatonicMaj','wholeTone'], kicks:['four'], bass:['pulsing'], hats:['sparse'], claps:['minimal'], percs:['sparse'], stabs:['sparse'], leads:['wide','melody'] },
+  rock:      { bpmRange:[110,140], scales:['major','pentatonicMin','blues','mixolydian'], kicks:['four','skipbeat'], bass:['pulsing','galloping'], hats:['standard'], claps:['backbeat'], percs:['rim'], stabs:['accent'], leads:['melody','staccato'] },
+  pop:       { bpmRange:[100,130], scales:['major','minor','pentatonicMaj','mixolydian'], kicks:['four'], bass:['pulsing','offbeat'], hats:['standard','sparse'], claps:['backbeat'], percs:['shaker'], stabs:['offbeat'], leads:['melody','arpeggio'] },
+};
 
 /* ═══════════════ SEQUENCER INSTRUMENT LIST ═══════════════ */
 export const SEQ_INSTRUMENTS = ['kick','bass','hat','clap','acid','lead','perc','stab'];
 export const SEQ_LABELS      = ['KCK','BAS','HAT','CLP','ACD','LED','PRC','STB'];
 export const SEQ_COLORS      = ['#ff4444','#c060ff','#00cccc','#e0e0e0','#44ff44','#4488ff','#ffcc00','#ff44aa'];
 export const SAMPLE_SLOTS    = 4;
+export { SCALES, ROOTS, BASS_STYLES, LEAD_STYLES, HAT_STYLES, KICK_STYLES, CLAP_STYLES, PERC_STYLES, STAB_STYLES, GENRE_PRESETS };
 
 /* ═══════════════ MAIN CLASS ═══════════════ */
 
@@ -201,6 +285,9 @@ export class LoopSynth {
     this.leadStyle = pick(LEAD_STYLES);
     this.hatStyle  = pick(HAT_STYLES);
     this.kickStyle = pick(KICK_STYLES);
+    this.clapStyle = pick(CLAP_STYLES);
+    this.percStyle = pick(PERC_STYLES);
+    this.stabStyle = pick(STAB_STYLES);
   }
 
   async init() {
@@ -359,11 +446,11 @@ export class LoopSynth {
       kick:  genKick(S, this.kickStyle),
       bass:  genBass(S, this.root, this.scale, this.bassStyle),
       hat:   genHats(S, this.hatStyle),
-      clap:  genClap(S),
+      clap:  genClap(S, this.clapStyle),
       acid:  genAcid(S, this.root, this.scale),
       lead:  genLead(S, this.root, this.scale, this.leadStyle),
-      perc:  genPerc(S),
-      stab:  genStab(S),
+      perc:  genPerc(S, this.percStyle),
+      stab:  genStab(S, this.stabStyle),
     };
 
     // Initialize hit counts (1 for active steps, 0 for inactive)
@@ -630,6 +717,9 @@ export class LoopSynth {
       leadStyle: this.leadStyle,
       hatStyle: this.hatStyle,
       kickStyle: this.kickStyle,
+      clapStyle: this.clapStyle,
+      percStyle: this.percStyle,
+      stabStyle: this.stabStyle,
       patterns: JSON.parse(JSON.stringify(this.patterns)),
       hits: JSON.parse(JSON.stringify(this.hits)),
       instState: { ...this.instState },
@@ -646,6 +736,9 @@ export class LoopSynth {
     if (state.leadStyle) this.leadStyle = state.leadStyle;
     if (state.hatStyle) this.hatStyle = state.hatStyle;
     if (state.kickStyle) this.kickStyle = state.kickStyle;
+    if (state.clapStyle) this.clapStyle = state.clapStyle;
+    if (state.percStyle) this.percStyle = state.percStyle;
+    if (state.stabStyle) this.stabStyle = state.stabStyle;
     if (state.patterns) this.patterns = state.patterns;
     if (state.hits) this.hits = state.hits;
     if (state.instState) this.instState = state.instState;
@@ -810,6 +903,9 @@ export class LoopSynth {
     this.leadStyle = pick(LEAD_STYLES);
     this.hatStyle  = pick(HAT_STYLES);
     this.kickStyle = pick(KICK_STYLES);
+    this.clapStyle = pick(CLAP_STYLES);
+    this.percStyle = pick(PERC_STYLES);
+    this.stabStyle = pick(STAB_STYLES);
 
     if (this.bass && coin(0.4)) this.bass.oscillator.type = pick(['sawtooth','square','fatsawtooth']);
     if (this.acid && coin(0.35)) this.acid.oscillator.type = pick(['square','sawtooth','pulse']);
@@ -820,7 +916,34 @@ export class LoopSynth {
     this.generatePatterns();
     if (was) this.start();
 
-    return { root:this.root, scale:this.scale, bass:this.bassStyle, lead:this.leadStyle, hats:this.hatStyle, kick:this.kickStyle };
+    return { root:this.root, scale:this.scale, bass:this.bassStyle, lead:this.leadStyle, hats:this.hatStyle, kick:this.kickStyle, clap:this.clapStyle, perc:this.percStyle, stab:this.stabStyle };
+  }
+
+  /* ─────────── genre preset randomize ─────────── */
+  randomizeGenre(genre) {
+    const preset = GENRE_PRESETS[genre];
+    if (!preset) return this.randomize();
+
+    const [lo, hi] = preset.bpmRange;
+    this.bpm = lo + Math.floor(Math.random() * (hi - lo + 1));
+    if (this.initialized) Tone.Transport.bpm.value = this.bpm;
+
+    this.root      = pick(ROOTS);
+    this.scale     = pick(preset.scales);
+    this.kickStyle = pick(preset.kicks);
+    this.bassStyle = pick(preset.bass);
+    this.hatStyle  = pick(preset.hats);
+    this.clapStyle = pick(preset.claps);
+    this.percStyle = pick(preset.percs);
+    this.stabStyle = pick(preset.stabs);
+    this.leadStyle = pick(preset.leads);
+
+    const was = this.isPlaying;
+    if (was) this.stop();
+    this.generatePatterns();
+    if (was) this.start();
+
+    return { root:this.root, scale:this.scale, bpm:this.bpm, bass:this.bassStyle, lead:this.leadStyle, hats:this.hatStyle, kick:this.kickStyle, clap:this.clapStyle, perc:this.percStyle, stab:this.stabStyle };
   }
 
   /* ─────────── analysis ─────────── */
