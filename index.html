@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSY LOOP MACHINE</title>
+<script src="https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body {
+  overflow:hidden; background:#000; color:#e0e0ff;
+  font-family:'Courier New',Courier,monospace; font-size:13px; user-select:none;
+}
+#canvas-container { position:fixed; inset:0; z-index:0; }
+
+/* ── PANEL ── */
+#panel {
+  position:fixed; bottom:10px; left:50%; transform:translateX(-50%);
+  width:min(680px,95vw); max-height:calc(100vh - 24px); overflow-y:auto; z-index:100;
+  background:rgba(8,0,18,0.82); backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
+  border:1px solid rgba(180,0,255,0.35); border-radius:14px; padding:12px 18px 10px;
+  box-shadow:0 0 40px rgba(120,0,255,0.15), inset 0 0 60px rgba(0,0,0,0.3);
+  scrollbar-width:thin; scrollbar-color:rgba(180,0,255,0.3) transparent;
+}
+#panel::-webkit-scrollbar { width:5px; }
+#panel::-webkit-scrollbar-thumb { background:rgba(180,0,255,0.3); border-radius:3px; }
+#panel h1 { text-align:center; font-size:14px; letter-spacing:6px; color:#c060ff; margin-bottom:8px; text-shadow:0 0 12px #a020f0; }
+
+/* rows */
+.row { display:flex; align-items:center; gap:8px; margin:4px 0; }
+.row label { width:44px; text-transform:uppercase; font-size:10px; letter-spacing:1px; color:#9080b0; flex-shrink:0; }
+.row .val { width:44px; text-align:right; font-size:11px; color:#c0b0ff; flex-shrink:0; }
+
+/* slider grid */
+.slider-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px 14px; margin:4px 0; }
+.si { display:flex; align-items:center; gap:6px; }
+.si label { width:38px; text-transform:uppercase; font-size:9px; letter-spacing:1px; color:#9080b0; flex-shrink:0; }
+.si input[type=range] { flex:1; }
+.si .val { width:38px; text-align:right; font-size:10px; color:#c0b0ff; flex-shrink:0; }
+
+/* range inputs */
+input[type=range] {
+  -webkit-appearance:none; height:5px; border-radius:3px;
+  background:rgba(255,255,255,0.08); outline:none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+  background:radial-gradient(circle,#d060ff 30%,#7010c0 100%); box-shadow:0 0 6px #b040ff; cursor:pointer;
+}
+input[type=range]::-moz-range-thumb {
+  width:14px; height:14px; border-radius:50%; border:none;
+  background:radial-gradient(circle,#d060ff 30%,#7010c0 100%); box-shadow:0 0 6px #b040ff; cursor:pointer;
+}
+
+/* buttons */
+.btn {
+  padding:5px 12px; border-radius:5px; border:1px solid rgba(180,0,255,0.4);
+  background:rgba(40,0,60,0.6); color:#d0b0ff; cursor:pointer;
+  font-family:inherit; font-size:11px; letter-spacing:1px; transition:all .12s;
+}
+.btn:hover { background:rgba(100,0,180,0.5); box-shadow:0 0 10px rgba(180,0,255,0.4); }
+.btn.active { background:rgba(180,0,255,0.45); border-color:#c060ff; color:#fff; }
+.btn:disabled { opacity:0.4; cursor:default; }
+
+.loop-btns { display:flex; gap:3px; }
+.loop-btns .btn { min-width:28px; text-align:center; padding:3px 6px; }
+
+/* progress */
+.progress-wrap { width:100%; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; margin:6px 0 2px; position:relative; }
+.progress-bar { height:100%; border-radius:2px; background:linear-gradient(90deg,#ff00ff,#00ffff); width:0%; transition:width .04s linear; }
+.progress-label { position:absolute; right:0; top:-13px; font-size:9px; color:#8070a0; }
+
+.divider { height:1px; background:linear-gradient(90deg,transparent,rgba(180,0,255,0.3),transparent); margin:8px 0; }
+
+/* ── STEP SEQUENCER ── */
+.seq-header { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.seq-header span { font-size:10px; letter-spacing:2px; color:#8070a0; text-transform:uppercase; }
+.bar-tabs { display:flex; gap:3px; margin-left:auto; }
+.bar-tabs .btn { font-size:9px; padding:2px 7px; min-width:22px; }
+
+.seq-row { display:flex; align-items:center; gap:2px; margin:1px 0; }
+.seq-label {
+  width:28px; font-size:9px; font-weight:bold; letter-spacing:1px;
+  text-align:right; padding-right:3px; flex-shrink:0;
+}
+.seq-step {
+  flex:1; height:18px; min-width:0; border-radius:2px;
+  border:1px solid rgba(255,255,255,0.06);
+  background:rgba(20,0,40,0.3); cursor:pointer; transition:background .06s;
+  display:flex; align-items:center; justify-content:center;
+  font-size:8px; font-weight:bold; color:rgba(255,255,255,0.7);
+}
+.seq-row.muted { opacity:0.3; }
+.seq-row.forced .seq-label { text-shadow:0 0 6px currentColor; }
+.seq-label { cursor:pointer; }
+.seq-step.beat-start { border-left:1px solid rgba(180,0,255,0.3); }
+.seq-step.on { box-shadow:inset 0 0 6px rgba(255,255,255,0.15); }
+.seq-step.current { border-color:rgba(0,255,255,0.7) !important; box-shadow:inset 0 0 8px rgba(0,255,255,0.25); }
+.seq-step:hover { border-color:rgba(180,0,255,0.5); }
+
+/* beat number markers */
+.seq-nums { display:flex; gap:2px; margin-left:30px; margin-bottom:1px; }
+.seq-nums span { flex:1; text-align:center; font-size:7px; color:#605080; }
+.seq-nums span.beat-num { color:#9080b0; }
+
+/* textures */
+.tex-row { display:flex; gap:5px; align-items:center; margin:4px 0; flex-wrap:wrap; }
+.tex-row input[type=text] {
+  flex:1; min-width:100px; padding:4px 8px; border-radius:4px;
+  border:1px solid rgba(180,0,255,0.3); background:rgba(20,0,40,0.6); color:#d0b0ff;
+  font-family:inherit; font-size:11px; outline:none;
+}
+.tex-row input[type=text]:focus { border-color:#c060ff; }
+.presets { display:flex; gap:3px; flex-wrap:wrap; margin:3px 0; }
+.presets .btn { font-size:9px; padding:2px 7px; }
+.gallery { display:flex; gap:4px; margin-top:4px; flex-wrap:wrap; }
+.gallery img { width:42px; height:42px; border-radius:4px; object-fit:cover; cursor:pointer; border:2px solid transparent; transition:border .12s; }
+.gallery img:hover { border-color:#c060ff; }
+.gallery img.sel { border-color:#00ffff; }
+
+.settings { max-height:0; overflow:hidden; transition:max-height .3s ease; }
+.settings.open { max-height:120px; }
+.settings-row { display:flex; gap:5px; align-items:center; margin:4px 0; }
+.settings-row input[type=text] { flex:1; padding:4px 8px; border-radius:4px; border:1px solid rgba(180,0,255,0.3); background:rgba(20,0,40,0.6); color:#d0b0ff; font-family:inherit; font-size:10px; outline:none; }
+
+.toggle-row { display:flex; gap:6px; align-items:center; justify-content:center; margin:3px 0; }
+.status { text-align:center; font-size:9px; color:#6050a0; margin-top:3px; min-height:12px; }
+.section-title { font-size:9px; letter-spacing:2px; color:#8070a0; text-transform:uppercase; margin:2px 0; }
+
+/* sample bank */
+.sample-bank { max-height:140px; overflow-y:auto; margin:3px 0; }
+.sample-item {
+  display:flex; align-items:center; gap:3px; padding:3px 5px; margin:2px 0;
+  background:rgba(20,0,40,0.4); border-radius:4px; border:1px solid rgba(255,255,255,0.05);
+}
+.sample-item .s-name { flex:1; font-size:9px; color:#c0b0ff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sample-item .s-dur { font-size:8px; color:#6050a0; min-width:24px; text-align:right; }
+.sample-item .btn { font-size:7px; padding:1px 4px; min-width:0; letter-spacing:0; }
+.map-item {
+  display:flex; align-items:center; gap:4px; padding:2px 5px; margin:1px 0;
+  background:rgba(20,0,40,0.4); border-radius:3px; border:1px solid rgba(255,255,255,0.05);
+}
+.map-item .m-name { flex:1; font-size:9px; color:#c0b0ff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.map-item .m-info { font-size:7px; color:#605080; min-width:60px; text-align:right; }
+.map-item .btn { font-size:7px; padding:1px 4px; min-width:0; letter-spacing:0; }
+.slot-indicator { display:inline-block; font-size:7px; padding:0 3px; border-radius:2px; margin-left:2px; }
+.ace-dot { display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:4px; vertical-align:middle; }
+.ace-dot.on { background:#44ff44; box-shadow:0 0 4px #44ff44; }
+.ace-dot.off { background:#ff4444; box-shadow:0 0 4px #ff4444; }
+
+/* sample mixer */
+.mix-row {
+  display:flex; align-items:center; gap:5px; margin:2px 0; padding:3px 5px;
+  background:rgba(20,0,40,0.4); border-radius:4px; border:1px solid rgba(255,255,255,0.05);
+}
+.mix-row .mix-label { font-size:9px; font-weight:bold; width:20px; flex-shrink:0; }
+.mix-row .mix-name { font-size:8px; color:#a090c0; width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex-shrink:0; }
+.mix-row input[type=range] { flex:1; height:4px; }
+.mix-row .mix-db { font-size:8px; color:#8070a0; width:30px; text-align:right; flex-shrink:0; }
+.mix-row .btn { font-size:8px; padding:2px 5px; min-width:0; }
+.mix-row .btn.muted { background:rgba(255,60,60,0.4); border-color:#ff4444; color:#ff8888; }
+.mix-empty { font-size:8px; color:#504070; text-align:center; padding:4px; }
+
+/* tag chips */
+.tag-chip { font-size:8px !important; padding:1px 5px !important; letter-spacing:0 !important; }
+.tag-chip.selected { background:rgba(180,0,255,0.45); border-color:#c060ff; color:#fff; }
+
+/* preview playing */
+.btn.previewing { background:rgba(255,60,60,0.4); border-color:#ff4444; color:#ff8888; }
+
+/* modals */
+.modal-overlay {
+  position:fixed; inset:0; z-index:200;
+  background:rgba(0,0,0,0.85); backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center;
+}
+.modal-content {
+  background:rgba(8,0,18,0.95);
+  border:1px solid rgba(180,0,255,0.4); border-radius:12px;
+  padding:16px; box-shadow:0 0 60px rgba(120,0,255,0.2);
+}
+.lib-item {
+  display:flex; align-items:center; gap:6px; padding:6px 8px; margin:3px 0;
+  background:rgba(20,0,40,0.5); border-radius:6px; border:1px solid rgba(255,255,255,0.06);
+}
+.lib-item .lib-name {
+  flex:1; font-size:11px; color:#d0b0ff; cursor:pointer;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.lib-item .lib-meta { font-size:8px; color:#605080; min-width:50px; text-align:right; }
+.lib-item .btn { font-size:8px; padding:2px 6px; }
+.lib-slots { display:flex; gap:2px; }
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+
+<div id="panel">
+  <h1>PSY LOOP MACHINE</h1>
+
+  <!-- transport -->
+  <div class="row" style="justify-content:center; gap:8px; margin-bottom:6px;">
+    <button class="btn" id="play-btn" style="min-width:80px;">&#9654; PLAY</button>
+    <button class="btn" id="rand-btn">RANDOMIZE</button>
+    <button class="btn" id="settings-toggle" style="font-size:13px;">&#9881;</button>
+  </div>
+
+  <!-- main controls -->
+  <div class="slider-grid">
+    <div class="si" title="Tempo in beats per minute. Psytrance is typically 138-148. Linear feel — each step is +1 BPM.">
+      <label>BPM</label>
+      <input type="range" id="bpm" min="130" max="160" value="144" step="1">
+      <span class="val" id="bpm-val">144</span>
+    </div>
+    <div class="si" title="Intensity — controls how many layers play at once. Low = kick + bass only. Mid = adds hats, claps, acid. High = everything including lead, pads, stabs. Small moves add/remove entire instruments.">
+      <label>INT</label>
+      <input type="range" id="intensity" min="0" max="1" value="0.5" step="0.01">
+      <span class="val" id="int-val">0.50</span>
+    </div>
+    <div class="si" title="Master lowpass filter cutoff (60-20kHz). Below ~1000 sounds muffled/dark, above ~8000 is wide open. Very sensitive in the low range — small moves at the bottom cut a lot of highs.">
+      <label>FLT</label>
+      <input type="range" id="filter" min="60" max="20000" value="4000" step="1">
+      <span class="val" id="flt-val">4000</span>
+    </div>
+    <div class="si" title="Swing — shifts every other 16th note later in time for a groovy, less mechanical feel. 0 = straight, 0.5 = maximum shuffle. Even small amounts (0.05-0.15) are noticeable.">
+      <label>SWG</label>
+      <input type="range" id="swing" min="0" max="0.5" value="0" step="0.01">
+      <span class="val" id="swg-val">0</span>
+    </div>
+  </div>
+
+  <!-- sound design -->
+  <div class="divider"></div>
+  <div class="section-title">SOUND DESIGN</div>
+  <div class="slider-grid">
+    <div class="si" title="Bass note decay — how long each bass note rings. Short (0.02-0.08) = tight staccato hits. Long (0.2-0.5) = boomy, sustained bass. Very audible even with small changes.">
+      <label>BASS</label>
+      <input type="range" id="bass-decay" min="0.02" max="0.5" value="0.08" step="0.01">
+      <span class="val" id="bd-val">0.08</span>
+    </div>
+    <div class="si" title="Acid line filter resonance (Q). Controls the squelchy character of the 303-style synth. Low (1-5) = subtle, smooth. High (15-25) = screaming, self-oscillating acid. Gets wild fast above 18.">
+      <label>RESO</label>
+      <input type="range" id="acid-reso" min="1" max="25" value="14" step="0.5">
+      <span class="val" id="ar-val">14</span>
+    </div>
+    <div class="si" title="Acid LFO rate — speed of the filter wobble on the acid line. Slow (0.25-1) = gentle sweeps. Fast (4-8) = rapid wah-wah. Syncs musically around 1, 2, or 4.">
+      <label>RATE</label>
+      <input type="range" id="acid-rate" min="0.25" max="8" value="2" step="0.25">
+      <span class="val" id="al-val">2.0</span>
+    </div>
+    <div class="si" title="Reverb wet/dry mix on lead and pad. 0 = completely dry. 1 = fully washed out in reverb. 0.2-0.5 is the sweet spot for spacey psytrance leads.">
+      <label>VERB</label>
+      <input type="range" id="reverb" min="0" max="1" value="0.35" step="0.01">
+      <span class="val" id="rv-val">0.35</span>
+    </div>
+    <div class="si" title="Ping-pong delay mix on lead and acid. 0 = no delay. Higher = more echoes bouncing left-right. Above 0.5 gets washy. Good for spacey trails at 0.2-0.4.">
+      <label>DLY</label>
+      <input type="range" id="delay" min="0" max="0.8" value="0.3" step="0.01">
+      <span class="val" id="dl-val">0.30</span>
+    </div>
+    <div class="si" title="Master distortion/overdrive. 0 = clean signal. Even small amounts (0.05-0.15) add grit. Above 0.5 gets aggressive and crunchy. Applied to everything through the master bus.">
+      <label>DIST</label>
+      <input type="range" id="distortion" min="0" max="1" value="0" step="0.01">
+      <span class="val" id="ds-val">0</span>
+    </div>
+    <div class="si" title="Kick drum pitch sweep speed — how fast the kick drops from high to low. Short (0.01-0.05) = tight, punchy click. Long (0.1-0.2) = boomy, pitched-down thud. Very sensitive — small changes reshape the kick character.">
+      <label>KICK</label>
+      <input type="range" id="kick-punch" min="0.01" max="0.2" value="0.05" step="0.005">
+      <span class="val" id="kp-val">0.05</span>
+    </div>
+    <div class="si" style="justify-content:flex-end; gap:4px;">
+      <div class="loop-btns">
+        <button class="btn" data-bars="1">1</button>
+        <button class="btn active" data-bars="2">2</button>
+        <button class="btn" data-bars="3">3</button>
+        <button class="btn" data-bars="4">4</button>
+      </div>
+      <span style="font-size:9px;color:#8070a0;">bars</span>
+      <button class="btn active" id="kaleido-toggle" style="margin-left:4px; font-size:9px;">KAL</button>
+    </div>
+  </div>
+
+  <!-- step sequencer -->
+  <div class="divider"></div>
+  <div class="seq-header">
+    <span>STEP SEQUENCER</span>
+    <div class="bar-tabs" id="bar-tabs"></div>
+    <button class="btn" id="clear-bar" style="font-size:9px;">CLR</button>
+    <button class="btn" id="save-map" style="font-size:9px;">SAVE</button>
+  </div>
+  <div id="seq-nums" class="seq-nums"></div>
+  <div id="sequencer"></div>
+
+  <!-- progress -->
+  <div class="progress-wrap">
+    <div class="progress-bar" id="loop-bar"></div>
+    <span class="progress-label" id="loop-pos"></span>
+  </div>
+
+  <div id="maps-list" style="max-height:80px; overflow-y:auto; margin:2px 0;"></div>
+
+  <div class="divider"></div>
+
+  <!-- textures -->
+  <div class="tex-row">
+    <input type="text" id="tex-prompt" placeholder="texture style...">
+    <button class="btn" id="tex-gen">GENERATE</button>
+  </div>
+  <div class="presets">
+    <button class="btn" data-p="sacred geometry, golden ratio spirals">sacred</button>
+    <button class="btn" data-p="dark organic tendrils, bioluminescent">organic</button>
+    <button class="btn" data-p="fractal mandelbrot zoom, electric">fractal</button>
+    <button class="btn" data-p="cyberpunk circuitry, glitch art">cyber</button>
+  </div>
+  <div class="tex-row" style="gap:6px;">
+    <button class="btn" id="tex-tunnel">Tunnel</button>
+    <button class="btn" id="tex-geo">Geometry</button>
+    <button class="btn" id="tex-clear">Clear</button>
+  </div>
+  <div class="gallery" id="gallery"></div>
+
+  <!-- ACE-Step audio generator -->
+  <div class="divider"></div>
+  <div class="section-title"><span class="ace-dot off" id="ace-dot"></span>ACE-STEP SAMPLE GENERATOR</div>
+  <div class="tex-row">
+    <input type="text" id="ace-prompt" placeholder="describe the sound to generate...">
+    <button class="btn" id="ace-gen">GENERATE</button>
+  </div>
+
+  <!-- tag chips: click to append to prompt -->
+  <div style="margin:3px 0;">
+    <div style="display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;">
+      <span style="font-size:7px;color:#605080;width:32px;line-height:20px;">GENRE</span>
+      <button class="btn tag-chip" data-tag="psytrance">psytrance</button>
+      <button class="btn tag-chip" data-tag="dark psy">dark psy</button>
+      <button class="btn tag-chip" data-tag="full-on">full-on</button>
+      <button class="btn tag-chip" data-tag="goa trance">goa</button>
+      <button class="btn tag-chip" data-tag="techno">techno</button>
+      <button class="btn tag-chip" data-tag="ambient">ambient</button>
+      <button class="btn tag-chip" data-tag="drum and bass">dnb</button>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;">
+      <span style="font-size:7px;color:#605080;width:32px;line-height:20px;">INST</span>
+      <button class="btn tag-chip" data-tag="303 acid bass">303</button>
+      <button class="btn tag-chip" data-tag="synth pad">pad</button>
+      <button class="btn tag-chip" data-tag="kick drum">kick</button>
+      <button class="btn tag-chip" data-tag="hi-hat percussion">hats</button>
+      <button class="btn tag-chip" data-tag="synth lead">lead</button>
+      <button class="btn tag-chip" data-tag="sub bass">sub</button>
+      <button class="btn tag-chip" data-tag="vocal chop">vox</button>
+      <button class="btn tag-chip" data-tag="fx riser">riser</button>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;">
+      <span style="font-size:7px;color:#605080;width:32px;line-height:20px;">MOOD</span>
+      <button class="btn tag-chip" data-tag="dark">dark</button>
+      <button class="btn tag-chip" data-tag="deep">deep</button>
+      <button class="btn tag-chip" data-tag="euphoric">euphoric</button>
+      <button class="btn tag-chip" data-tag="psychedelic">psyche</button>
+      <button class="btn tag-chip" data-tag="aggressive">aggro</button>
+      <button class="btn tag-chip" data-tag="atmospheric">atmo</button>
+      <button class="btn tag-chip" data-tag="hypnotic">hypno</button>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:2px; margin:2px 0;">
+      <span style="font-size:7px;color:#605080;width:32px;line-height:20px;">CHAR</span>
+      <button class="btn tag-chip" data-tag="rolling">rolling</button>
+      <button class="btn tag-chip" data-tag="squelchy">squelchy</button>
+      <button class="btn tag-chip" data-tag="distorted">dist</button>
+      <button class="btn tag-chip" data-tag="reverb">reverb</button>
+      <button class="btn tag-chip" data-tag="delay">delay</button>
+      <button class="btn tag-chip" data-tag="looping">loop</button>
+      <button class="btn tag-chip" data-tag="evolving">evolve</button>
+      <button class="btn tag-chip" data-tag="tight punchy">tight</button>
+    </div>
+  </div>
+  <button class="btn" id="ace-clear-tags" style="font-size:8px; padding:1px 6px; margin-bottom:3px;">CLEAR PROMPT</button>
+
+  <!-- vocal / instrumental toggle + lyrics -->
+  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;">
+    <button class="btn active" id="ace-inst-toggle" style="font-size:9px;">INSTRUMENTAL</button>
+    <button class="btn" id="ace-vox-toggle" style="font-size:9px;">VOCAL</button>
+  </div>
+  <textarea id="ace-lyrics" placeholder="lyrics / vocal content..." style="display:none; width:100%; height:48px; resize:vertical; padding:4px 8px; border-radius:4px; border:1px solid rgba(180,0,255,0.3); background:rgba(20,0,40,0.6); color:#d0b0ff; font-family:inherit; font-size:10px; outline:none; margin:2px 0;"></textarea>
+
+  <!-- duration + quality sliders -->
+  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Duration of the generated audio. ACE-Step minimum is 10s internally — shorter clips are trimmed after generation.">
+    <label style="font-size:9px;color:#8070a0;width:28px;">DUR</label>
+    <input type="range" id="ace-dur" min="1" max="240" value="10" step="1" style="flex:1;">
+    <span class="val" id="ace-dur-val" style="width:30px;">10s</span>
+  </div>
+  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Inference steps — higher = better quality but slower. 4=fast/rough, 8=default, 16=high, 32=best. Each doubling roughly doubles generation time.">
+    <label style="font-size:9px;color:#8070a0;width:28px;">QUAL</label>
+    <input type="range" id="ace-steps" min="4" max="32" value="8" step="4" style="flex:1;">
+    <span class="val" id="ace-steps-val" style="width:30px;">8</span>
+  </div>
+  <div style="display:flex; align-items:center; gap:6px; margin:3px 0;" title="Guidance scale (CFG) — how strongly the audio follows the prompt. Low (3-7) = creative/loose. Mid (10-15) = balanced. High (15-25) = strict prompt adherence but can overfit. Default: 15.">
+    <label style="font-size:9px;color:#8070a0;width:28px;">CFG</label>
+    <input type="range" id="ace-cfg" min="1" max="25" value="15" step="0.5" style="flex:1;">
+    <span class="val" id="ace-cfg-val" style="width:30px;">15</span>
+  </div>
+  <div style="display:flex; align-items:center; margin-top:4px;">
+    <span class="section-title">SAMPLE BANK</span>
+    <button class="btn" id="open-library" style="font-size:8px; padding:1px 6px; margin-left:auto;">LIBRARY</button>
+  </div>
+  <div id="sample-bank" class="sample-bank"></div>
+
+  <!-- sample mixer -->
+  <div class="section-title" style="margin-top:4px;">SAMPLE MIXER</div>
+  <div id="sample-mixer"></div>
+
+  <!-- settings -->
+  <div class="settings" id="settings-panel">
+    <div class="divider"></div>
+    <div class="settings-row">
+      <label style="font-size:9px;color:#8070a0;">API KEY</label>
+      <input type="text" id="api-key" placeholder="Google API key">
+      <button class="btn" id="save-key" style="font-size:9px;">Save</button>
+    </div>
+    <div class="settings-row">
+      <label style="font-size:9px;color:#8070a0;">ACE-STEP</label>
+      <input type="text" id="ace-url" placeholder="ACE-Step API base" value="/ace-api">
+      <button class="btn" id="ace-check" style="font-size:9px;">Check</button>
+    </div>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<!-- clip editor modal -->
+<div id="clip-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-content" style="width:min(600px,90vw);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <span class="section-title" id="clip-title">CLIP EDITOR</span>
+      <button class="btn" id="clip-close" style="font-size:13px;">&times;</button>
+    </div>
+    <canvas id="clip-canvas" style="width:100%; height:120px; background:rgba(20,0,40,0.5); border-radius:6px; border:1px solid rgba(255,255,255,0.08);"></canvas>
+    <div style="display:flex; gap:6px; align-items:center; margin:6px 0;">
+      <label style="font-size:9px;color:#8070a0;width:36px;">START</label>
+      <input type="range" id="clip-start" min="0" max="1000" value="0" step="1" style="flex:1;">
+      <span class="val" id="clip-start-val" style="width:40px;">0.00s</span>
+    </div>
+    <div style="display:flex; gap:6px; align-items:center; margin:6px 0;">
+      <label style="font-size:9px;color:#8070a0;width:36px;">END</label>
+      <input type="range" id="clip-end" min="0" max="1000" value="1000" step="1" style="flex:1;">
+      <span class="val" id="clip-end-val" style="width:40px;">10.0s</span>
+    </div>
+    <div style="font-size:9px; color:#8070a0;" id="clip-info">Trimmed: 10.0s</div>
+    <div style="display:flex; gap:6px; margin-top:10px;">
+      <button class="btn" id="clip-preview">&#9654; PREVIEW</button>
+      <button class="btn" id="clip-save">SAVE CLIP</button>
+      <button class="btn" id="clip-replace">REPLACE</button>
+    </div>
+  </div>
+</div>
+
+<!-- library modal -->
+<div id="lib-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-content" style="width:min(640px,92vw); max-height:80vh;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <span class="section-title">SAMPLE LIBRARY</span>
+      <button class="btn" id="lib-close" style="font-size:13px;">&times;</button>
+    </div>
+    <div id="lib-list" style="max-height:calc(80vh - 60px); overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ MAIN MODULE ══════════════════ -->
+<script type="module">
+import { PsytranceSynth, SEQ_INSTRUMENTS, SEQ_LABELS, SEQ_COLORS, SAMPLE_SLOTS } from './synth.js';
+
+const SLOT_COLORS = ['#ff8800','#88ff00','#0088ff','#ff0088'];
+import { PsychedelicVisualizer } from './visualizer.js';
+import { ImagenAPI } from './api.js';
+import { SampleBank } from './samples.js';
+
+const container = document.getElementById('canvas-container');
+const vis   = new PsychedelicVisualizer(container);
+const synth = new PsytranceSynth();
+const storedKey = localStorage.getItem('psy_api_key') || '';
+const api   = new ImagenAPI(storedKey);
+const sbank = new SampleBank('/ace-api');
+
+// Beat map persistence
+class MapStore {
+  constructor() { this.dbName = 'psy_maps'; this.storeName = 'maps'; this.db = null; }
+  async open() {
+    if (this.db) return;
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(this.dbName, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(this.storeName, { keyPath: 'id', autoIncrement: true });
+      req.onsuccess = () => { this.db = req.result; resolve(); };
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async save(entry) {
+    await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(this.storeName, 'readwrite');
+      const req = tx.objectStore(this.storeName).add(entry);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async getAll() {
+    await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(this.storeName, 'readonly');
+      const req = tx.objectStore(this.storeName).getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async remove(id) {
+    await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(this.storeName, 'readwrite');
+      const req = tx.objectStore(this.storeName).delete(id);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+}
+const mapStore = new MapStore();
+
+const $ = id => document.getElementById(id);
+const playBtn=$('play-btn'), randBtn=$('rand-btn');
+const bpmSlider=$('bpm'), intSlider=$('intensity'), fltSlider=$('filter');
+const bpmVal=$('bpm-val'), intVal=$('int-val'), fltVal=$('flt-val');
+const loopBar=$('loop-bar'), loopPos=$('loop-pos');
+const texPrompt=$('tex-prompt'), texGen=$('tex-gen'), gallery=$('gallery'), status=$('status');
+const apiKeyIn=$('api-key'), kalToggle=$('kaleido-toggle');
+const settingsToggle=$('settings-toggle'), settingsPanel=$('settings-panel');
+
+apiKeyIn.value = storedKey;
+
+/* ── auto-load API key from .env ── */
+try {
+  const envRes = await fetch('.env');
+  if (envRes.ok) {
+    const envText = await envRes.text();
+    const m = envText.match(/GOOGLE_API_KEY=(.+)/);
+    if (m) {
+      const k = m[1].trim();
+      api.setApiKey(k);
+      apiKeyIn.value = k;
+      if (!storedKey) localStorage.setItem('psy_api_key', k);
+      status.textContent = 'API key loaded from .env';
+      setTimeout(() => { if (status.textContent.includes('.env')) status.textContent = ''; }, 2500);
+    }
+  }
+} catch (_) {}
+
+let texMode = 'tunnel';
+let seqBar  = 0;           // which bar the sequencer is showing
+let seqStepEls = [];        // flat array of step DOM elements for fast update
+let prevHighlight = -1;
+
+/* ── transport ── */
+playBtn.addEventListener('click', async () => {
+  await synth.init();
+  if (synth.isPlaying) { synth.stop(); playBtn.innerHTML='&#9654; PLAY'; }
+  else { synth.start(); playBtn.innerHTML='&#9632; STOP'; }
+});
+
+/* ── main sliders ── */
+function wire(id, display, fn, fmt) {
+  const el = $(id), valEl = $(display);
+  el.addEventListener('input', () => { const v=+el.value; valEl.textContent=fmt?fmt(v):v; fn(v); });
+}
+wire('bpm',       'bpm-val', v => { if (synth.initialized) synth.setBPM(v); });
+wire('intensity', 'int-val', v => synth.setIntensity(v), v=>v.toFixed(2));
+wire('filter',    'flt-val', v => { if (synth.initialized) synth.setFilterCutoff(v); }, v=>v>=10000?(v/1000).toFixed(1)+'k':v);
+wire('swing',     'swg-val', v => { if (synth.initialized) synth.setSwing(v); }, v=>v.toFixed(2));
+
+/* ── sound design sliders ── */
+wire('bass-decay',  'bd-val', v => { if (synth.initialized) synth.setBassDecay(v); },  v=>v.toFixed(2));
+wire('acid-reso',   'ar-val', v => { if (synth.initialized) synth.setAcidResonance(v); }, v=>v.toFixed(1));
+wire('acid-rate',   'al-val', v => { if (synth.initialized) synth.setAcidLFORate(v); },  v=>v.toFixed(2));
+wire('reverb',      'rv-val', v => { if (synth.initialized) synth.setReverbMix(v); },    v=>v.toFixed(2));
+wire('delay',       'dl-val', v => { if (synth.initialized) synth.setDelayMix(v); },     v=>v.toFixed(2));
+wire('distortion',  'ds-val', v => { if (synth.initialized) synth.setDistortion(v); },   v=>v.toFixed(2));
+wire('kick-punch',  'kp-val', v => { if (synth.initialized) synth.setKickPunch(v); },    v=>v.toFixed(3));
+
+/* ── loop length (preserves existing patterns) ── */
+document.querySelectorAll('[data-bars]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-bars]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const bars = +btn.dataset.bars;
+    synth.setLoopLength(bars);
+    if (seqBar >= bars) seqBar = bars - 1;
+    buildSequencer();
+  });
+});
+
+/* ── clear current bar ── */
+$('clear-bar').addEventListener('click', () => {
+  synth.clearBar(seqBar);
+  buildSequencer();
+});
+
+/* ── randomize ── */
+randBtn.addEventListener('click', async () => {
+  await synth.init();
+  const r = synth.randomize();
+  buildSequencer();
+  status.textContent = `${r.root} ${r.scale} | bass:${r.bass} lead:${r.lead} hats:${r.hats}`;
+  setTimeout(() => { if (status.textContent.includes(r.root)) status.textContent=''; }, 3500);
+});
+
+/* ── kaleidoscope ── */
+kalToggle.addEventListener('click', () => { kalToggle.classList.toggle('active'); vis.setKaleidoscope(kalToggle.classList.contains('active')); });
+
+/* ── settings ── */
+settingsToggle.addEventListener('click', () => settingsPanel.classList.toggle('open'));
+$('save-key').addEventListener('click', () => {
+  const k=apiKeyIn.value.trim(); api.setApiKey(k); localStorage.setItem('psy_api_key',k);
+  status.textContent='API key saved'; setTimeout(()=>{if(status.textContent==='API key saved')status.textContent='';},2000);
+});
+
+/* ── texture mode ── */
+$('tex-tunnel').addEventListener('click', () => { texMode='tunnel'; status.textContent='mode: tunnel'; });
+$('tex-geo').addEventListener('click', () => { texMode='geometry'; status.textContent='mode: geometry'; });
+$('tex-clear').addEventListener('click', () => { vis.clearTexture(); status.textContent='textures cleared'; });
+
+/* ── texture generation ── */
+async function generateTexture(prompt) {
+  if (api.busy) return;
+  status.textContent='generating texture...'; texGen.disabled=true;
+  try { const url=await api.generateTexture(prompt); vis.applyTexture(url,texMode); addGalleryThumb(url,api.galleryCount-1); status.textContent='texture applied!'; }
+  catch(e) { status.textContent='error: '+e.message; }
+  finally { texGen.disabled=false; }
+}
+texGen.addEventListener('click', () => generateTexture(texPrompt.value.trim()));
+texPrompt.addEventListener('keydown', e => { if (e.key==='Enter') generateTexture(texPrompt.value.trim()); });
+document.querySelectorAll('[data-p]').forEach(btn => {
+  btn.addEventListener('click', () => { texPrompt.value=btn.dataset.p; generateTexture(btn.dataset.p); });
+});
+
+function addGalleryThumb(dataUrl, idx) {
+  const img=document.createElement('img'); img.src=dataUrl; img.title=`Texture ${idx+1}`;
+  img.addEventListener('click', () => { gallery.querySelectorAll('img').forEach(i=>i.classList.remove('sel')); img.classList.add('sel'); vis.applyTexture(dataUrl,texMode); });
+  gallery.appendChild(img);
+}
+
+/* ══════════════════ ACE-STEP SAMPLE GENERATOR ══════════════════ */
+
+const aceDot   = $('ace-dot');
+const aceGen   = $('ace-gen');
+const acePrompt = $('ace-prompt');
+const aceDur   = $('ace-dur');
+const aceDurVal = $('ace-dur-val');
+const aceSteps = $('ace-steps');
+const aceStepsVal = $('ace-steps-val');
+const aceCfg = $('ace-cfg');
+const aceCfgVal = $('ace-cfg-val');
+const aceLyrics = $('ace-lyrics');
+const sampleBankEl = $('sample-bank');
+
+let aceInstrumental = true;
+let previewSource = null;   // currently playing BufferSourceNode
+let previewBtn   = null;    // the button element that triggered it
+
+// duration slider
+aceDur.addEventListener('input', () => { aceDurVal.textContent = aceDur.value + 's'; });
+
+// quality slider
+aceSteps.addEventListener('input', () => { aceStepsVal.textContent = aceSteps.value; });
+
+// guidance scale slider
+aceCfg.addEventListener('input', () => { aceCfgVal.textContent = aceCfg.value; });
+
+// instrumental / vocal toggle
+$('ace-inst-toggle').addEventListener('click', () => {
+  aceInstrumental = true;
+  $('ace-inst-toggle').classList.add('active');
+  $('ace-vox-toggle').classList.remove('active');
+  aceLyrics.style.display = 'none';
+});
+$('ace-vox-toggle').addEventListener('click', () => {
+  aceInstrumental = false;
+  $('ace-vox-toggle').classList.add('active');
+  $('ace-inst-toggle').classList.remove('active');
+  aceLyrics.style.display = '';
+});
+
+// tag chips — click to toggle and append/remove from prompt
+document.querySelectorAll('.tag-chip').forEach(chip => {
+  chip.addEventListener('click', e => {
+    e.stopPropagation();
+    const tag = chip.dataset.tag;
+    chip.classList.toggle('selected');
+    // rebuild prompt from selected tags
+    const selected = [...document.querySelectorAll('.tag-chip.selected')].map(c => c.dataset.tag);
+    acePrompt.value = selected.join(', ');
+  });
+});
+
+// clear prompt + deselect all tags
+$('ace-clear-tags').addEventListener('click', () => {
+  acePrompt.value = '';
+  document.querySelectorAll('.tag-chip.selected').forEach(c => c.classList.remove('selected'));
+});
+
+// download a sample as a WAV file
+function downloadSample(sample) {
+  const url = URL.createObjectURL(sample.audioBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (sample.name || 'sample').replace(/[^a-zA-Z0-9_\- ]/g, '') + '.wav';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// stop any playing preview
+function stopPreview() {
+  if (previewSource) {
+    try { previewSource.stop(); } catch (_) {}
+    previewSource = null;
+  }
+  if (previewBtn) {
+    previewBtn.classList.remove('previewing');
+    previewBtn.textContent = '\u25B6';
+    previewBtn = null;
+  }
+}
+
+// progress callback
+sbank.onProgress = msg => { status.textContent = msg; };
+
+// check ACE-Step connection on load
+(async () => {
+  const ok = await sbank.checkConnection();
+  aceDot.classList.toggle('on', ok);
+  aceDot.classList.toggle('off', !ok);
+})();
+
+// settings: check connection button
+$('ace-check').addEventListener('click', async () => {
+  const base = $('ace-url').value.trim() || '/ace-api';
+  sbank.apiBase = base;
+  status.textContent = 'Checking ACE-Step...';
+  const ok = await sbank.checkConnection();
+  aceDot.classList.toggle('on', ok);
+  aceDot.classList.toggle('off', !ok);
+  status.textContent = ok ? 'ACE-Step connected!' : 'ACE-Step not reachable';
+  setTimeout(() => { if (status.textContent.includes('ACE-Step')) status.textContent = ''; }, 2500);
+});
+
+// generate sample
+async function generateAceSample(prompt) {
+  if (sbank.busy) return;
+  aceGen.disabled = true;
+  try {
+    await sbank.generateSample({
+      prompt,
+      lyrics: aceLyrics.value.trim(),
+      duration: +aceDur.value,
+      instrumental: aceInstrumental,
+      inferenceSteps: +aceSteps.value,
+      guidanceScale: +aceCfg.value,
+      bpm: synth.bpm,
+    });
+    rebuildSampleBank();
+    status.textContent = 'Sample generated!';
+  } catch (e) {
+    status.textContent = 'ACE-Step error: ' + e.message;
+  } finally {
+    aceGen.disabled = false;
+  }
+}
+
+aceGen.addEventListener('click', () => generateAceSample(acePrompt.value.trim()));
+acePrompt.addEventListener('keydown', e => { if (e.key === 'Enter') generateAceSample(acePrompt.value.trim()); });
+
+// decode audio blob → AudioBuffer for Tone.js
+async function decodeBlob(blob) {
+  const ctx = Tone.context?.rawContext || new AudioContext();
+  const buf = await blob.arrayBuffer();
+  return ctx.decodeAudioData(buf);
+}
+
+// assign sample to a synth slot (0-3)
+async function assignToSlot(sampleIndex, slot) {
+  const sample = sbank.getSample(sampleIndex);
+  if (!sample) return;
+  try {
+    status.textContent = `Loading sample to S${slot + 1}...`;
+    const audioBuf = await decodeBlob(sample.audioBlob);
+    synth.loadSampleToSlot(slot, audioBuf, sample.name);
+    rebuildSampleBank();
+    buildMixer();
+    status.textContent = `S${slot + 1}: ${sample.name}`;
+  } catch (e) {
+    status.textContent = 'Load error: ' + e.message;
+  }
+}
+
+// build sample bank UI
+function rebuildSampleBank() {
+  sampleBankEl.innerHTML = '';
+  sbank.samples.forEach((sample, idx) => {
+    const item = document.createElement('div');
+    item.className = 'sample-item';
+
+    const name = document.createElement('span');
+    name.className = 's-name';
+    name.textContent = sample.name;
+    name.title = 'Click to rename';
+    name.style.cursor = 'pointer';
+    name.addEventListener('click', e => {
+      e.stopPropagation();
+      const oldName = sample.name;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = oldName;
+      input.style.cssText = 'width:100%;background:rgba(20,0,40,0.8);border:1px solid #c060ff;color:#d0b0ff;font-family:inherit;font-size:9px;padding:1px 4px;border-radius:2px;outline:none;';
+      let done = false;
+      const finish = async () => {
+        if (done) return;
+        done = true;
+        const newName = input.value.trim() || oldName;
+        if (newName !== oldName) {
+          for (let s = 0; s < SAMPLE_SLOTS; s++) {
+            if (synth.sampleNames[s] === oldName) synth.sampleNames[s] = newName;
+          }
+          await sbank.renameSample(idx, newName);
+          buildMixer();
+        }
+        rebuildSampleBank();
+      };
+      input.addEventListener('blur', finish);
+      input.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter') input.blur();
+        if (ev.key === 'Escape') { input.value = oldName; input.blur(); }
+      });
+      name.replaceWith(input);
+      input.focus();
+      input.select();
+    });
+
+    const dur = document.createElement('span');
+    dur.className = 's-dur';
+    dur.textContent = sample.duration + 's';
+
+    item.appendChild(name);
+    item.appendChild(dur);
+
+    // slot assignment buttons S1-S4
+    for (let s = 0; s < SAMPLE_SLOTS; s++) {
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.textContent = 'S' + (s + 1);
+      const loaded = synth.sampleNames[s] === sample.name;
+      if (loaded) btn.classList.add('active');
+      btn.style.color = SLOT_COLORS[s];
+      btn.addEventListener('click', e => { e.stopPropagation(); assignToSlot(idx, s); });
+      item.appendChild(btn);
+    }
+
+    // preview play/stop button
+    const play = document.createElement('button');
+    play.className = 'btn';
+    play.textContent = '\u25B6';
+    play.addEventListener('click', async e => {
+      e.stopPropagation();
+      // if this button is already playing, stop it
+      if (previewBtn === play) {
+        stopPreview();
+        return;
+      }
+      // stop any other preview first
+      stopPreview();
+      try {
+        const audioBuf = await decodeBlob(sample.audioBlob);
+        const ctx = Tone.context?.rawContext || new AudioContext();
+        const src = ctx.createBufferSource();
+        src.buffer = audioBuf;
+        src.connect(ctx.destination);
+        src.onended = () => {
+          if (previewBtn === play) stopPreview();
+        };
+        src.start();
+        previewSource = src;
+        previewBtn = play;
+        play.classList.add('previewing');
+        play.textContent = '\u25A0';
+      } catch (_) {}
+    });
+    item.appendChild(play);
+
+    // edit/trim button
+    const edit = document.createElement('button');
+    edit.className = 'btn';
+    edit.textContent = '\u2702';
+    edit.title = 'Edit / Trim';
+    edit.addEventListener('click', e => {
+      e.stopPropagation();
+      openClipEditor(idx);
+    });
+    item.appendChild(edit);
+
+    // download button
+    const dl = document.createElement('button');
+    dl.className = 'btn';
+    dl.textContent = '\u2193';
+    dl.title = 'Download WAV';
+    dl.addEventListener('click', e => { e.stopPropagation(); downloadSample(sample); });
+    item.appendChild(dl);
+
+    // delete button
+    const del = document.createElement('button');
+    del.className = 'btn';
+    del.textContent = '\u00D7';
+    del.addEventListener('click', async e => {
+      e.stopPropagation();
+      await sbank.deleteSample(idx);
+      rebuildSampleBank();
+    });
+    item.appendChild(del);
+
+    sampleBankEl.appendChild(item);
+  });
+
+}
+
+// build sample mixer UI
+function buildMixer() {
+  const mixerEl = $('sample-mixer');
+  mixerEl.innerHTML = '';
+
+  let anyLoaded = false;
+  for (let s = 0; s < SAMPLE_SLOTS; s++) {
+    const name = synth.sampleNames[s];
+    if (!name) continue;
+    anyLoaded = true;
+
+    const row = document.createElement('div');
+    row.className = 'mix-row';
+
+    // slot label
+    const label = document.createElement('span');
+    label.className = 'mix-label';
+    label.textContent = 'S' + (s + 1);
+    label.style.color = SLOT_COLORS[s];
+    row.appendChild(label);
+
+    // sample name
+    const nameEl = document.createElement('span');
+    nameEl.className = 'mix-name';
+    nameEl.textContent = name;
+    nameEl.title = name;
+    row.appendChild(nameEl);
+
+    // volume slider
+    const vol = document.createElement('input');
+    vol.type = 'range';
+    vol.min = -40;
+    vol.max = 6;
+    vol.step = 1;
+    vol.value = synth.samplePlayers[s]?.volume?.value ?? -6;
+    row.appendChild(vol);
+
+    // dB display
+    const dbLabel = document.createElement('span');
+    dbLabel.className = 'mix-db';
+    dbLabel.textContent = Math.round(+vol.value) + 'dB';
+    row.appendChild(dbLabel);
+
+    vol.addEventListener('input', () => {
+      const db = +vol.value;
+      dbLabel.textContent = Math.round(db) + 'dB';
+      synth.setSampleVolume(s, db);
+    });
+    vol.addEventListener('mousedown', e => e.stopPropagation());
+
+    // mute button
+    const mute = document.createElement('button');
+    mute.className = 'btn';
+    mute.textContent = 'M';
+    if (synth.samplePlayers[s]?.mute) mute.classList.add('muted');
+    mute.addEventListener('click', e => {
+      e.stopPropagation();
+      const isMuted = !mute.classList.contains('muted');
+      mute.classList.toggle('muted', isMuted);
+      synth.setSampleMute(s, isMuted);
+    });
+    row.appendChild(mute);
+
+    // loop toggle
+    const loop = document.createElement('button');
+    loop.className = 'btn';
+    loop.textContent = 'LP';
+    if (synth.samplePlayers[s]?.loop !== false) loop.classList.add('active');
+    loop.addEventListener('click', e => {
+      e.stopPropagation();
+      const isLoop = !loop.classList.contains('active');
+      loop.classList.toggle('active', isLoop);
+      synth.setSampleLoop(s, isLoop);
+    });
+    row.appendChild(loop);
+
+    // clear slot button
+    const clr = document.createElement('button');
+    clr.className = 'btn';
+    clr.textContent = '\u00D7';
+    clr.addEventListener('click', e => {
+      e.stopPropagation();
+      synth.clearSampleSlot(s);
+      rebuildSampleBank();
+      buildMixer();
+    });
+    row.appendChild(clr);
+
+    mixerEl.appendChild(row);
+  }
+
+  if (!anyLoaded) {
+    const empty = document.createElement('div');
+    empty.className = 'mix-empty';
+    empty.textContent = 'Assign samples from the bank above using S1-S4 buttons';
+    mixerEl.appendChild(empty);
+  }
+}
+
+/* ══════════════════ STEP SEQUENCER ══════════════════ */
+
+function buildSequencer() {
+  const seqContainer = $('sequencer');
+  const numsContainer = $('seq-nums');
+  const tabsContainer = $('bar-tabs');
+  seqContainer.innerHTML = '';
+  numsContainer.innerHTML = '';
+  tabsContainer.innerHTML = '';
+  seqStepEls = [];
+
+  // bar tabs
+  for (let b = 0; b < synth.loopLength; b++) {
+    const tab = document.createElement('button');
+    tab.className = 'btn' + (b === seqBar ? ' active' : '');
+    tab.textContent = b + 1;
+    tab.addEventListener('click', () => { seqBar = b; buildSequencer(); });
+    tabsContainer.appendChild(tab);
+  }
+
+  // step numbers
+  for (let c = 0; c < 16; c++) {
+    const sp = document.createElement('span');
+    sp.textContent = c + 1;
+    if (c % 4 === 0) sp.className = 'beat-num';
+    numsContainer.appendChild(sp);
+  }
+
+  const HIT_ALPHA = ['', '70', 'a0', 'd0'];
+
+  // instrument rows
+  SEQ_INSTRUMENTS.forEach((inst, row) => {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'seq-row';
+
+    // apply current inst state
+    const curState = synth.getInstState(inst);
+    if (curState === 'mute') rowDiv.classList.add('muted');
+    if (curState === 'force') rowDiv.classList.add('forced');
+
+    const label = document.createElement('span');
+    label.className = 'seq-label';
+    label.textContent = SEQ_LABELS[row];
+    label.style.color = curState === 'mute' ? '#ff4444' : curState === 'force' ? '#44ff44' : SEQ_COLORS[row];
+    label.title = 'Click to cycle: normal → force → mute';
+    label.addEventListener('click', e => {
+      e.stopPropagation();
+      const state = synth.cycleInstState(inst);
+      rowDiv.classList.remove('muted', 'forced');
+      if (state === 'mute') { rowDiv.classList.add('muted'); label.style.color = '#ff4444'; }
+      else if (state === 'force') { rowDiv.classList.add('forced'); label.style.color = '#44ff44'; }
+      else { label.style.color = SEQ_COLORS[row]; }
+    });
+    rowDiv.appendChild(label);
+
+    for (let col = 0; col < 16; col++) {
+      const step = seqBar * 16 + col;
+      const btn = document.createElement('div');
+      btn.className = 'seq-step';
+      if (col % 4 === 0) btn.classList.add('beat-start');
+
+      const pat = synth.patterns[inst];
+      const isOn = pat && pat[step] != null;
+      if (isOn) {
+        const hits = synth.getHits(inst, step);
+        btn.classList.add('on');
+        btn.style.background = SEQ_COLORS[row] + (HIT_ALPHA[hits] || '70');
+        if (hits > 1) btn.textContent = hits;
+      }
+
+      btn.addEventListener('mousedown', e => {
+        e.stopPropagation();
+        const result = synth.toggleStep(inst, step);
+        if (result) {
+          btn.classList.add('on');
+          btn.style.background = SEQ_COLORS[row] + (HIT_ALPHA[result.hits] || '70');
+          btn.textContent = result.hits > 1 ? result.hits : '';
+        } else {
+          btn.classList.remove('on');
+          btn.style.background = '';
+          btn.textContent = '';
+        }
+      });
+
+      rowDiv.appendChild(btn);
+      seqStepEls.push({ el: btn, step, inst, row });
+    }
+
+    seqContainer.appendChild(rowDiv);
+  });
+}
+
+/* ══════════════════ BEAT MAPS ══════════════════ */
+
+function rebuildMapsList(maps) {
+  const el = $('maps-list');
+  el.innerHTML = '';
+  if (!maps.length) return;
+  maps.sort((a, b) => b.ts - a.ts);
+  for (const map of maps) {
+    const row = document.createElement('div');
+    row.className = 'map-item';
+
+    const name = document.createElement('span');
+    name.className = 'm-name';
+    name.textContent = map.name;
+
+    const info = document.createElement('span');
+    info.className = 'm-info';
+    info.textContent = `${map.state.bpm}bpm ${map.state.root} ${map.state.scale}`;
+
+    const load = document.createElement('button');
+    load.className = 'btn';
+    load.textContent = 'LOAD';
+    load.addEventListener('click', e => {
+      e.stopPropagation();
+      synth.loadState(map.state);
+      $('bpm').value = synth.bpm;
+      $('bpm-val').textContent = synth.bpm;
+      document.querySelectorAll('[data-bars]').forEach(b => b.classList.toggle('active', +b.dataset.bars === synth.loopLength));
+      if (seqBar >= synth.loopLength) seqBar = synth.loopLength - 1;
+      buildSequencer();
+      status.textContent = `Loaded: ${map.name}`;
+      setTimeout(() => { if (status.textContent.includes('Loaded')) status.textContent = ''; }, 2500);
+    });
+
+    const del = document.createElement('button');
+    del.className = 'btn';
+    del.textContent = '\u00D7';
+    del.addEventListener('click', async e => {
+      e.stopPropagation();
+      await mapStore.remove(map.id);
+      const updated = await mapStore.getAll();
+      rebuildMapsList(updated);
+    });
+
+    row.appendChild(name);
+    row.appendChild(info);
+    row.appendChild(load);
+    row.appendChild(del);
+    el.appendChild(row);
+  }
+}
+
+$('save-map').addEventListener('click', async () => {
+  const name = prompt('Beat map name:', `${synth.root} ${synth.scale} ${synth.bpm}bpm`);
+  if (!name) return;
+  const entry = { name, state: synth.getState(), ts: Date.now() };
+  await mapStore.save(entry);
+  const maps = await mapStore.getAll();
+  rebuildMapsList(maps);
+  status.textContent = `Saved: ${name}`;
+  setTimeout(() => { if (status.textContent.includes('Saved')) status.textContent = ''; }, 2500);
+});
+
+// initial build (uses default patterns from constructor)
+synth.generatePatterns();
+buildSequencer();
+buildMixer();
+
+/* ══════════════════ CLIP EDITOR ══════════════════ */
+
+let clipSampleIdx = -1;
+let clipAudioBuf = null;
+let clipPreviewSrc = null;
+
+function openClipEditor(idx) {
+  clipSampleIdx = idx;
+  const sample = sbank.getSample(idx);
+  if (!sample) return;
+  $('clip-title').textContent = sample.name;
+  stopClipPreview();
+
+  decodeBlob(sample.audioBlob).then(buf => {
+    clipAudioBuf = buf;
+    const dur = buf.duration;
+    $('clip-start').value = 0;
+    $('clip-end').value = 1000;
+    $('clip-start-val').textContent = '0.00s';
+    $('clip-end-val').textContent = dur.toFixed(2) + 's';
+    $('clip-info').textContent = `Trimmed: ${dur.toFixed(2)}s (original: ${dur.toFixed(2)}s)`;
+    $('clip-modal').style.display = '';
+    requestAnimationFrame(() => drawClipWaveform());
+  });
+}
+
+function drawClipWaveform() {
+  if (!clipAudioBuf) return;
+  const canvas = $('clip-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.offsetWidth;
+  const h = canvas.offsetHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const data = clipAudioBuf.getChannelData(0);
+  const startFrac = +$('clip-start').value / 1000;
+  const endFrac = +$('clip-end').value / 1000;
+
+  // background
+  ctx.fillStyle = 'rgba(20,0,40,0.5)';
+  ctx.fillRect(0, 0, w, h);
+
+  // waveform
+  const step = Math.ceil(data.length / w);
+  ctx.beginPath();
+  ctx.strokeStyle = '#c060ff';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < w; x++) {
+    const baseIdx = Math.floor(x / w * data.length);
+    let min = 1, max = -1;
+    for (let j = 0; j < step && baseIdx + j < data.length; j++) {
+      const val = data[baseIdx + j];
+      if (val < min) min = val;
+      if (val > max) max = val;
+    }
+    ctx.moveTo(x, (1 - max) * h / 2);
+    ctx.lineTo(x, (1 - min) * h / 2);
+  }
+  ctx.stroke();
+
+  // dim outside trim region
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, 0, startFrac * w, h);
+  ctx.fillRect(endFrac * w, 0, (1 - endFrac) * w, h);
+
+  // trim markers
+  ctx.strokeStyle = '#00ffff';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(startFrac * w, 0); ctx.lineTo(startFrac * w, h);
+  ctx.moveTo(endFrac * w, 0); ctx.lineTo(endFrac * w, h);
+  ctx.stroke();
+
+  // time labels on markers
+  const dur = clipAudioBuf.duration;
+  ctx.fillStyle = '#00ffff';
+  ctx.font = '9px monospace';
+  ctx.fillText((startFrac * dur).toFixed(2) + 's', startFrac * w + 3, 11);
+  ctx.textAlign = 'right';
+  ctx.fillText((endFrac * dur).toFixed(2) + 's', endFrac * w - 3, 11);
+  ctx.textAlign = 'left';
+}
+
+function updateClipInfo() {
+  if (!clipAudioBuf) return;
+  const dur = clipAudioBuf.duration;
+  let s = +$('clip-start').value, e = +$('clip-end').value;
+  if (s >= e) { s = e - 1; $('clip-start').value = s; }
+  if (e <= s) { e = s + 1; $('clip-end').value = e; }
+  const startSec = s / 1000 * dur, endSec = e / 1000 * dur;
+  $('clip-start-val').textContent = startSec.toFixed(2) + 's';
+  $('clip-end-val').textContent = endSec.toFixed(2) + 's';
+  $('clip-info').textContent = `Trimmed: ${(endSec - startSec).toFixed(2)}s (original: ${dur.toFixed(2)}s)`;
+  drawClipWaveform();
+}
+
+$('clip-start').addEventListener('input', updateClipInfo);
+$('clip-end').addEventListener('input', updateClipInfo);
+
+$('clip-close').addEventListener('click', () => {
+  stopClipPreview();
+  $('clip-modal').style.display = 'none';
+  clipAudioBuf = null;
+});
+$('clip-modal').addEventListener('click', e => {
+  if (e.target === $('clip-modal')) {
+    stopClipPreview();
+    $('clip-modal').style.display = 'none';
+    clipAudioBuf = null;
+  }
+});
+
+function stopClipPreview() {
+  if (clipPreviewSrc) { try { clipPreviewSrc.stop(); } catch(_) {} clipPreviewSrc = null; }
+  $('clip-preview').innerHTML = '&#9654; PREVIEW';
+  $('clip-preview').classList.remove('previewing');
+}
+
+$('clip-preview').addEventListener('click', () => {
+  if (clipPreviewSrc) { stopClipPreview(); return; }
+  if (!clipAudioBuf) return;
+  const dur = clipAudioBuf.duration;
+  const startSec = +$('clip-start').value / 1000 * dur;
+  const endSec = +$('clip-end').value / 1000 * dur;
+  const ctx = Tone.context?.rawContext || new AudioContext();
+  const src = ctx.createBufferSource();
+  src.buffer = clipAudioBuf;
+  src.connect(ctx.destination);
+  src.onended = () => stopClipPreview();
+  src.start(0, startSec, endSec - startSec);
+  clipPreviewSrc = src;
+  $('clip-preview').innerHTML = '&#9632; STOP';
+  $('clip-preview').classList.add('previewing');
+});
+
+function encodeWavBlob(buf, startSample, endSample) {
+  const sr = buf.sampleRate, ch = buf.numberOfChannels;
+  const len = endSample - startSample;
+  const dataSize = len * ch * 2;
+  const ab = new ArrayBuffer(44 + dataSize);
+  const v = new DataView(ab);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0,'RIFF'); v.setUint32(4, 36 + dataSize, true); w(8,'WAVE');
+  w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true);
+  v.setUint16(22, ch, true); v.setUint32(24, sr, true);
+  v.setUint32(28, sr * ch * 2, true); v.setUint16(32, ch * 2, true);
+  v.setUint16(34, 16, true); w(36,'data'); v.setUint32(40, dataSize, true);
+  const chData = [];
+  for (let c = 0; c < ch; c++) chData.push(buf.getChannelData(c));
+  let off = 44;
+  for (let i = startSample; i < endSample; i++) {
+    for (let c = 0; c < ch; c++) {
+      const s = Math.max(-1, Math.min(1, chData[c][i]));
+      v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      off += 2;
+    }
+  }
+  return new Blob([ab], { type: 'audio/wav' });
+}
+
+async function saveClipTrimmed(asNew) {
+  if (!clipAudioBuf || clipSampleIdx < 0) return;
+  const dur = clipAudioBuf.duration;
+  const sr = clipAudioBuf.sampleRate;
+  const startSec = +$('clip-start').value / 1000 * dur;
+  const endSec = +$('clip-end').value / 1000 * dur;
+  const startSample = Math.max(0, Math.floor(startSec * sr));
+  const endSample = Math.min(clipAudioBuf.length, Math.floor(endSec * sr));
+  if (endSample <= startSample) return;
+
+  const trimmedBlob = encodeWavBlob(clipAudioBuf, startSample, endSample);
+  const trimmedDur = +(endSec - startSec).toFixed(2);
+
+  if (asNew) {
+    const orig = sbank.getSample(clipSampleIdx);
+    const entry = {
+      name: (orig?.name || 'clip') + ' (trimmed)',
+      prompt: orig?.prompt || '',
+      duration: trimmedDur,
+      audioBlob: trimmedBlob,
+      ts: Date.now(),
+    };
+    try { entry.id = await sbank.store.save(entry); } catch(_) {}
+    sbank.samples.push(entry);
+    status.textContent = 'Saved trimmed clip!';
+  } else {
+    await sbank.replaceSample(clipSampleIdx, trimmedBlob, trimmedDur);
+    status.textContent = 'Replaced with trimmed clip!';
+  }
+
+  stopClipPreview();
+  rebuildSampleBank();
+  buildMixer();
+  $('clip-modal').style.display = 'none';
+  clipAudioBuf = null;
+  setTimeout(() => { if (status.textContent.includes('clip')) status.textContent = ''; }, 2500);
+}
+
+$('clip-save').addEventListener('click', () => saveClipTrimmed(true));
+$('clip-replace').addEventListener('click', () => saveClipTrimmed(false));
+
+/* ══════════════════ SAMPLE LIBRARY ══════════════════ */
+
+$('open-library').addEventListener('click', () => {
+  rebuildLibrary();
+  $('lib-modal').style.display = '';
+});
+$('lib-close').addEventListener('click', () => { $('lib-modal').style.display = 'none'; });
+$('lib-modal').addEventListener('click', e => { if (e.target === $('lib-modal')) $('lib-modal').style.display = 'none'; });
+
+function rebuildLibrary() {
+  const el = $('lib-list');
+  el.innerHTML = '';
+
+  if (!sbank.samples.length) {
+    el.innerHTML = '<div style="text-align:center;color:#605080;font-size:10px;padding:20px;">No samples yet. Generate some with ACE-Step!</div>';
+    return;
+  }
+
+  sbank.samples.forEach((sample, idx) => {
+    const row = document.createElement('div');
+    row.className = 'lib-item';
+
+    const name = document.createElement('span');
+    name.className = 'lib-name';
+    name.textContent = sample.name;
+    name.title = sample.prompt || sample.name;
+    name.addEventListener('click', e => {
+      e.stopPropagation();
+      const oldName = sample.name;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = oldName;
+      input.style.cssText = 'flex:1;background:rgba(20,0,40,0.8);border:1px solid #c060ff;color:#d0b0ff;font-family:inherit;font-size:11px;padding:2px 6px;border-radius:3px;outline:none;';
+      let done = false;
+      const finish = async () => {
+        if (done) return; done = true;
+        const newName = input.value.trim() || oldName;
+        if (newName !== oldName) {
+          for (let s = 0; s < SAMPLE_SLOTS; s++) {
+            if (synth.sampleNames[s] === oldName) synth.sampleNames[s] = newName;
+          }
+          await sbank.renameSample(idx, newName);
+          buildMixer();
+          rebuildSampleBank();
+        }
+        rebuildLibrary();
+      };
+      input.addEventListener('blur', finish);
+      input.addEventListener('keydown', ev => { if (ev.key==='Enter') input.blur(); if (ev.key==='Escape') { input.value = oldName; input.blur(); } });
+      name.replaceWith(input);
+      input.focus();
+      input.select();
+    });
+
+    const meta = document.createElement('span');
+    meta.className = 'lib-meta';
+    meta.textContent = `${sample.duration}s`;
+    if (sample.ts) {
+      const d = new Date(sample.ts);
+      meta.textContent += ` \u00B7 ${d.toLocaleDateString()}`;
+    }
+
+    const play = document.createElement('button');
+    play.className = 'btn';
+    play.textContent = '\u25B6';
+    play.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (previewBtn === play) { stopPreview(); return; }
+      stopPreview();
+      try {
+        const audioBuf = await decodeBlob(sample.audioBlob);
+        const ctx = Tone.context?.rawContext || new AudioContext();
+        const src = ctx.createBufferSource();
+        src.buffer = audioBuf;
+        src.connect(ctx.destination);
+        src.onended = () => { if (previewBtn === play) stopPreview(); };
+        src.start();
+        previewSource = src;
+        previewBtn = play;
+        play.classList.add('previewing');
+        play.textContent = '\u25A0';
+      } catch(_) {}
+    });
+
+    const edit = document.createElement('button');
+    edit.className = 'btn';
+    edit.textContent = '\u2702';
+    edit.title = 'Edit / Trim';
+    edit.addEventListener('click', e => {
+      e.stopPropagation();
+      $('lib-modal').style.display = 'none';
+      openClipEditor(idx);
+    });
+
+    const dl = document.createElement('button');
+    dl.className = 'btn';
+    dl.textContent = '\u2193';
+    dl.title = 'Download WAV';
+    dl.addEventListener('click', e => { e.stopPropagation(); downloadSample(sample); });
+
+    const slots = document.createElement('span');
+    slots.className = 'lib-slots';
+    for (let s = 0; s < SAMPLE_SLOTS; s++) {
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.textContent = 'S' + (s + 1);
+      btn.style.color = SLOT_COLORS[s];
+      if (synth.sampleNames[s] === sample.name) btn.classList.add('active');
+      btn.addEventListener('click', ev => { ev.stopPropagation(); assignToSlot(idx, s); rebuildLibrary(); });
+      slots.appendChild(btn);
+    }
+
+    const del = document.createElement('button');
+    del.className = 'btn';
+    del.textContent = '\u00D7';
+    del.addEventListener('click', async e => {
+      e.stopPropagation();
+      await sbank.deleteSample(idx);
+      rebuildSampleBank();
+      rebuildLibrary();
+    });
+
+    row.appendChild(name);
+    row.appendChild(meta);
+    row.appendChild(play);
+    row.appendChild(edit);
+    row.appendChild(dl);
+    row.appendChild(slots);
+    row.appendChild(del);
+    el.appendChild(row);
+  });
+}
+
+/* ══════════════════ LOAD SAVED DATA ══════════════════ */
+(async () => {
+  // textures
+  try {
+    const saved = await api.loadSaved();
+    if (saved.length) {
+      saved.forEach((item,i) => addGalleryThumb(item.dataUrl,i));
+      status.textContent = `${saved.length} saved texture(s) loaded`;
+      setTimeout(() => { if(status.textContent.includes('loaded')) status.textContent=''; }, 2500);
+    }
+  } catch(_) {}
+  // samples
+  try {
+    const saved = await sbank.loadSaved();
+    if (saved.length) {
+      rebuildSampleBank();
+      buildMixer();
+      status.textContent = `${saved.length} saved sample(s) loaded`;
+      setTimeout(() => { if(status.textContent.includes('sample')) status.textContent=''; }, 2500);
+    }
+  } catch(_) {}
+  // beat maps
+  try {
+    const maps = await mapStore.getAll();
+    if (maps.length) rebuildMapsList(maps);
+  } catch(_) {}
+})();
+
+/* ══════════════════ ANIMATION LOOP ══════════════════ */
+function animate() {
+  requestAnimationFrame(animate);
+  const ad = synth.getAudioData();
+  vis.update(ad);
+
+  // loop progress
+  if (synth.isPlaying) {
+    const p = synth.getLoopProgress();
+    loopBar.style.width = (p*100).toFixed(1)+'%';
+    const currentBar = Math.floor(p*synth.loopLength)+1;
+    loopPos.textContent = `${currentBar}/${synth.loopLength}`;
+
+    // highlight current step in sequencer
+    const curStep = synth._currentStep;
+    const curBar  = Math.floor(curStep / 16);
+    const curCol  = curStep % 16;
+
+    if (curStep !== prevHighlight) {
+      // clear old highlight
+      seqStepEls.forEach(s => s.el.classList.remove('current'));
+      // highlight if we're viewing this bar
+      if (curBar === seqBar) {
+        for (let r = 0; r < SEQ_INSTRUMENTS.length; r++) {
+          const idx = r * 16 + curCol;
+          if (seqStepEls[idx]) seqStepEls[idx].el.classList.add('current');
+        }
+      }
+      prevHighlight = curStep;
+    }
+  }
+}
+animate();
+</script>
+</body>
+</html>
